@@ -1,0 +1,1147 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="color-scheme" content="light dark" />
+<link rel="icon" href="data:," />
+<title>社群订单</title>
+<style>
+:root {
+--bg: #f5f5f7;
+--surface: #ffffff;
+--surface-2: #fbfbfd;
+--ink: #1d1d1f;
+--sub: #6e6e73;
+--faint: #86868b;
+--line: #e3e3e8;
+--accent: #0071e3;
+--accent-press: #0060c9;
+--on-accent: #ffffff;
+--danger: #d70015;
+--ok: #0a7d33;
+--chip: #e8e8ed;
+--nav-bg: rgba(251, 251, 253, 0.88);
+--sheet-shadow: 0 -12px 40px rgba(0, 0, 0, 0.18);
+--card-shadow: 0 1px 2px rgba(0, 0, 0, 0.04), 0 8px 24px rgba(0, 0, 0, 0.05);
+--wx: #07c160;
+--wx-press: #06ad56;
+--ali: #1677ff;
+--ali-press: #0e5fd8;
+--ok-bg: rgba(10, 125, 51, 0.12);
+color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+:root {
+--bg: #000000;
+--surface: #1c1c1e;
+--surface-2: #242426;
+--ink: #f5f5f7;
+--sub: #a1a1a6;
+--faint: #7c7c80;
+--line: #2e2e31;
+--accent: #2997ff;
+--accent-press: #57a9ff;
+--on-accent: #ffffff;
+--danger: #ff6961;
+--ok: #30d158;
+--chip: #2c2c2e;
+--nav-bg: rgba(22, 22, 24, 0.88);
+--sheet-shadow: 0 -12px 40px rgba(0, 0, 0, 0.6);
+--card-shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 24px rgba(0, 0, 0, 0.35);
+--ok-bg: rgba(48, 209, 88, 0.16);
+color-scheme: dark;
+}
+}
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent;}
+html, body { margin: 0; padding: 0;}
+body {
+font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC",
+"Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Arial, sans-serif;
+background: var(--bg);
+color: var(--ink);
+font-size: 15px;
+line-height: 1.45;
+}
+button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer;}
+input, textarea { font: inherit; color: inherit;}
+img { display: block;}
+
+/* ---------- App frame (mobile-first, centred on desktop) ---------- */
+.app {
+max-width: 480px;
+margin: 0 auto;
+min-height: 100dvh;
+background: var(--bg);
+position: relative;
+}
+@media (min-width: 560px) {
+.app { border-left: 1px solid var(--line); border-right: 1px solid var(--line);}
+}
+main { padding-bottom: calc(76px + env(safe-area-inset-bottom));}
+
+.view { display: none;}
+.view.active { display: block;}
+
+/* ---------- Shop header / search ---------- */
+.shop-head {
+position: sticky; top: 0; z-index: 30;
+background: var(--nav-bg);
+-webkit-backdrop-filter: blur(18px); backdrop-filter: blur(18px);
+padding: 14px 16px 10px;
+border-bottom: 1px solid var(--line);
+}
+.shop-title { font-size: 22px; font-weight: 700; letter-spacing: -0.01em; margin: 0 0 10px;}
+.shop-title small { display: block; font-size: 13px; font-weight: 400; color: var(--sub); margin-top: 2px; letter-spacing: 0;}
+.searchbar {
+display: flex; align-items: center; gap: 8px;
+background: var(--chip); border-radius: 12px; padding: 0 10px; height: 40px;
+}
+.searchbar svg { flex: none; color: var(--faint);}
+.searchbar input {
+flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; height: 100%;
+font-size: 15px;
+}
+.searchbar input::placeholder { color: var(--faint);}
+.search-clear {
+flex: none; width: 22px; height: 22px; border-radius: 50%;
+background: var(--faint); color: var(--surface);
+display: none; align-items: center; justify-content: center; font-size: 13px; line-height: 1;
+}
+.search-clear.show { display: flex;}
+
+.chips {
+display: flex; gap: 8px; overflow-x: auto; padding: 12px 16px 2px;
+scrollbar-width: none;
+}
+.chips::-webkit-scrollbar { display: none;}
+.chip {
+flex: none; padding: 7px 14px; border-radius: 999px;
+background: var(--surface); border: 1px solid var(--line);
+font-size: 13.5px; color: var(--ink);
+}
+.chip.on { background: var(--ink); color: var(--bg); border-color: var(--ink); font-weight: 600;}
+
+.result-line { padding: 10px 16px 0; font-size: 13px; color: var(--sub); display: none;}
+.result-line.show { display: block;}
+
+/* ---------- Product grid: 2 per row, square cards ---------- */
+.grid {
+display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
+padding: 12px 16px 20px;
+}
+.card {
+background: var(--surface); border-radius: 20px; box-shadow: var(--card-shadow);
+padding: 10px 10px 12px; display: flex; flex-direction: column; text-align: left;
+width: 100%;
+}
+.card-img {
+position: relative; border-radius: 12px; overflow: hidden;
+aspect-ratio: 1 / 1; background: var(--surface-2);
+}
+.card-img img { width: 100%; height: 100%; object-fit: cover;}
+.tag {
+position: absolute; top: 8px; left: 8px;
+font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 999px;
+background: var(--accent); color: var(--on-accent);
+}
+.tag.hot { background: #e8590c;}
+.card-name {
+font-size: 15px; font-weight: 600; margin: 10px 2px 0; min-height: 42px;
+display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.ph {
+display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
+width: 100%; height: 100%; padding: 12px; text-align: center;
+background: var(--surface-2); color: var(--faint);
+}
+.ph .ph-name {
+font-size: 13.5px; font-weight: 600; color: var(--sub); line-height: 1.35;
+display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
+}
+.ph small { font-size: 11px;}
+.row-item .ph { width: 68px; height: 68px; border-radius: 12px; flex: none;}
+.row-item .ph .ph-name { font-size: 11.5px; -webkit-line-clamp: 2;}
+.row-item .ph small { display: none;}
+.cart-item .ph { width: 76px; height: 76px; border-radius: 12px; flex: none;}
+.cart-item .ph .ph-name { font-size: 11.5px; -webkit-line-clamp: 2;}
+.cart-item .ph small { display: none;}
+.card-spec { font-size: 12.5px; color: var(--sub); margin: 2px 2px 0;}
+.card-foot { display: flex; align-items: flex-end; justify-content: space-between; margin-top: 10px; min-height: 32px;}
+.price { font-size: 17px; font-weight: 700; letter-spacing: -0.01em;}
+.price small { font-size: 11.5px; font-weight: 400; color: var(--sub);}
+
+.add-btn {
+background: var(--accent); color: var(--on-accent);
+font-size: 13.5px; font-weight: 600;
+padding: 8px 14px; border-radius: 999px; white-space: nowrap;
+}
+.add-btn:active { background: var(--accent-press);}
+
+/* ---------- Quantity stepper ---------- */
+.stepper { display: inline-flex; align-items: center; gap: 2px;}
+.stepper button {
+width: 30px; height: 30px; border-radius: 50%;
+display: flex; align-items: center; justify-content: center;
+font-size: 17px; line-height: 1; flex: none;
+}
+.stepper .minus { border: 1.5px solid var(--line); color: var(--ink); background: var(--surface);}
+.stepper .plus { background: var(--accent); color: var(--on-accent);}
+.stepper .qty { min-width: 26px; text-align: center; font-weight: 600; font-size: 15px;}
+.stepper.lg button { width: 38px; height: 38px; font-size: 20px;}
+.stepper.lg .qty { min-width: 34px; font-size: 17px;}
+
+.empty {
+padding: 64px 32px; text-align: center; color: var(--sub);
+}
+.empty svg { margin: 0 auto 14px; color: var(--faint);}
+.empty p { margin: 0 0 16px; font-size: 14.5px;}
+.empty .ghost-btn {
+border: 1px solid var(--line); background: var(--surface); border-radius: 999px;
+padding: 9px 20px; font-weight: 600; color: var(--accent); font-size: 14px;
+}
+
+/* ---------- Page heads for inner views ---------- */
+.page-head {
+position: sticky; top: 0; z-index: 30;
+background: var(--nav-bg);
+-webkit-backdrop-filter: blur(18px); backdrop-filter: blur(18px);
+padding: 16px; border-bottom: 1px solid var(--line);
+display: flex; align-items: baseline; justify-content: space-between; gap: 12px;
+}
+.page-head h2 { margin: 0; font-size: 20px; font-weight: 700;}
+.page-head .head-note { font-size: 13px; color: var(--sub);}
+.text-btn { color: var(--accent); font-size: 14px; font-weight: 500;}
+
+/* ---------- Category view ---------- */
+.cat-layout { display: flex; align-items: stretch;}
+.cat-rail {
+flex: none; width: 92px; background: var(--surface-2);
+border-right: 1px solid var(--line);
+padding: 8px 0 20px; align-self: flex-start;
+position: sticky; top: 61px; max-height: calc(100dvh - 61px - 76px); overflow-y: auto;
+}
+.cat-rail button {
+display: block; width: 100%; text-align: left;
+padding: 13px 10px 13px 16px; font-size: 14px; color: var(--sub);
+border-left: 3px solid transparent;
+}
+.cat-rail button.on { color: var(--ink); font-weight: 700; background: var(--bg); border-left-color: var(--accent);}
+.cat-rail .cnt { display: block; font-size: 11px; color: var(--faint); font-weight: 400; margin-top: 1px;}
+.cat-main { flex: 1; min-width: 0; padding: 6px 12px 20px;}
+
+.row-item {
+display: flex; gap: 12px; padding: 12px 4px; border-bottom: 1px solid var(--line);
+align-items: center; width: 100%; text-align: left;
+}
+.row-item:last-child { border-bottom: 0;}
+.row-item img { width: 68px; height: 68px; border-radius: 12px; object-fit: cover; flex: none; background: var(--surface-2);}
+.row-info { flex: 1; min-width: 0;}
+.row-name { font-weight: 600; font-size: 14.5px;}
+.row-spec { font-size: 12px; color: var(--sub); margin-top: 1px;}
+.row-foot { display: flex; align-items: center; justify-content: space-between; margin-top: 6px;}
+.row-foot .price { font-size: 15.5px;}
+
+/* ---------- Cart view ---------- */
+.cart-list { padding: 6px 16px 0;}
+.cart-item {
+display: flex; gap: 12px; background: var(--surface); border-radius: 18px;
+box-shadow: var(--card-shadow); padding: 12px; margin-top: 12px; align-items: center;
+}
+.cart-item img { width: 76px; height: 76px; border-radius: 12px; object-fit: cover; flex: none; background: var(--surface-2);}
+.cart-info { flex: 1; min-width: 0;}
+.cart-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px;}
+.cart-name { font-weight: 600; font-size: 15px;}
+.cart-spec { font-size: 12px; color: var(--sub); margin-top: 1px;}
+.del-btn { color: var(--faint); flex: none; padding: 2px;}
+.del-btn:active { color: var(--danger);}
+.cart-foot { display: flex; justify-content: space-between; align-items: center; margin-top: 8px;}
+.line-total { font-size: 13px; color: var(--sub);}
+.line-total b { color: var(--ink); font-size: 15px;}
+
+.summary {
+margin: 16px; background: var(--surface); border-radius: 18px; box-shadow: var(--card-shadow);
+padding: 16px;
+}
+.summary .srow { display: flex; justify-content: space-between; font-size: 14px; color: var(--sub); padding: 3px 0;}
+.summary .srow.total { color: var(--ink); font-size: 16px; font-weight: 700; border-top: 1px solid var(--line); margin-top: 8px; padding-top: 12px;}
+.summary .srow.total span:last-child { color: var(--danger);}
+.primary-btn {
+display: block; width: 100%; background: var(--accent); color: var(--on-accent);
+font-size: 16px; font-weight: 600; border-radius: 999px; padding: 14px; margin-top: 14px;
+text-align: center;
+}
+.primary-btn:active { background: var(--accent-press);}
+.primary-btn:disabled { background: var(--chip); color: var(--faint); cursor: default;}
+
+/* ---------- Me view ---------- */
+.profile {
+margin: 16px; background: var(--surface); border-radius: 20px; box-shadow: var(--card-shadow);
+padding: 18px 16px; display: flex; align-items: center; gap: 14px;
+}
+.avatar {
+width: 56px; height: 56px; border-radius: 50%; flex: none;
+background: var(--accent); color: #fff;
+display: flex; align-items: center; justify-content: center;
+}
+.profile .p-name { font-size: 17px; font-weight: 700;}
+.profile .p-sub { font-size: 13px; color: var(--sub); margin-top: 2px;}
+.stat-row { display: flex; gap: 12px; margin: 0 16px;}
+.stat {
+flex: 1; background: var(--surface); border-radius: 16px; box-shadow: var(--card-shadow);
+padding: 14px 8px; text-align: center;
+}
+.stat b { display: block; font-size: 20px;}
+.stat span { font-size: 12px; color: var(--sub);}
+.form-card {
+margin: 16px; background: var(--surface); border-radius: 20px; box-shadow: var(--card-shadow);
+padding: 6px 16px 14px;
+}
+.form-card h3 { font-size: 15px; margin: 14px 0 4px;}
+.field { padding: 10px 0; border-bottom: 1px solid var(--line);}
+.field:last-of-type { border-bottom: 0;}
+.field label { display: block; font-size: 12.5px; color: var(--sub); margin-bottom: 4px;}
+.field input,.field textarea {
+width: 100%; border: 0; outline: 0; background: transparent; font-size: 15px; resize: none;
+}
+.field input::placeholder,.field textarea::placeholder { color: var(--faint);}
+.menu-card {
+margin: 0 16px 16px; background: var(--surface); border-radius: 20px; box-shadow: var(--card-shadow);
+overflow: hidden;
+}
+.menu-row {
+display: flex; align-items: center; justify-content: space-between; width: 100%;
+padding: 15px 16px; font-size: 15px; text-align: left; border-bottom: 1px solid var(--line);
+}
+.menu-row:last-child { border-bottom: 0;}
+.menu-row .chev { color: var(--faint);}
+.menu-row.danger { color: var(--danger);}
+
+/* ---------- Bottom nav ---------- */
+.tabbar {
+position: fixed; left: 50%; transform: translateX(-50%);
+bottom: 0; width: 100%; max-width: 480px; z-index: 40;
+background: var(--nav-bg);
+-webkit-backdrop-filter: blur(18px); backdrop-filter: blur(18px);
+border-top: 1px solid var(--line);
+padding-bottom: env(safe-area-inset-bottom);
+display: flex;
+}
+.tab {
+flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px;
+padding: 8px 0 7px; font-size: 11px; color: var(--faint); position: relative;
+}
+.tab.on { color: var(--accent); font-weight: 600;}
+.tab .badge {
+position: absolute; top: 3px; left: calc(50% + 3px);
+min-width: 17px; height: 17px; padding: 0 5px; border-radius: 999px;
+background: var(--danger); color: #fff;
+font-size: 10.5px; font-weight: 700; line-height: 17px; text-align: center;
+display: none;
+}
+.tab .badge.show { display: block;}
+.tab .badge.bump { animation: bump 0.3s ease;}
+@keyframes bump { 40% { transform: scale(1.35);}}
+@media (prefers-reduced-motion: reduce) {.tab .badge.bump { animation: none;}}
+
+/* ---------- Sheets ---------- */
+.scrim {
+position: fixed; inset: 0; z-index: 50; background: rgba(0, 0, 0, 0.42);
+opacity: 0; pointer-events: none; transition: opacity 0.22s ease;
+}
+.scrim.show { opacity: 1; pointer-events: auto;}
+.sheet {
+position: fixed; left: 50%; bottom: 0; z-index: 51;
+width: 100%; max-width: 480px;
+transform: translate(-50%, 105%); visibility: hidden; transition: transform 0.28s cubic-bezier(0.32, 0.72, 0.35, 1), visibility 0s 0.28s;
+background: var(--surface); border-radius: 24px 24px 0 0; box-shadow: var(--sheet-shadow);
+padding: 10px 20px calc(20px + env(safe-area-inset-bottom));
+max-height: 88dvh; overflow-y: auto;
+}
+.sheet.show { transform: translate(-50%, 0); visibility: visible; transition: transform 0.28s cubic-bezier(0.32, 0.72, 0.35, 1), visibility 0s;}
+@media (prefers-reduced-motion: reduce) {.sheet,.scrim { transition: none;}}
+.grab { width: 38px; height: 5px; border-radius: 99px; background: var(--line); margin: 2px auto 14px;}
+.sheet-img { border-radius: 16px; overflow: hidden; aspect-ratio: 4 / 3; background: var(--surface-2);}
+.sheet-img img { width: 100%; height: 100%; object-fit: cover;}
+.sheet h3 { font-size: 20px; margin: 16px 0 2px;}
+.sheet .d-spec { color: var(--sub); font-size: 13.5px;}
+.sheet .d-desc { color: var(--sub); font-size: 14px; margin: 12px 0 0;}
+.sheet-foot { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin-top: 20px;}
+.sheet-foot .price { font-size: 22px;}
+.sheet .primary-btn { margin-top: 0; flex: 1;}
+.order-text {
+background: var(--surface-2); border: 1px solid var(--line); border-radius: 14px;
+padding: 14px; font-size: 14px; white-space: pre-wrap; word-break: break-word;
+max-height: 46dvh; overflow-y: auto; margin: 12px 0 0;
+}
+.sheet .hint { font-size: 13px; color: var(--sub); margin-top: 12px;}
+
+/* ---------- Payment (simulated) ---------- */
+.pay-amount-box {
+background: var(--surface-2); border: 1px solid var(--line); border-radius: 16px;
+padding: 16px; text-align: center; margin-top: 12px;
+}
+.pay-amount-label { font-size: 13px; color: var(--sub); display: flex; align-items: center; justify-content: center; gap: 6px;}
+.pay-amount { font-size: 34px; font-weight: 800; letter-spacing: -0.02em; margin-top: 4px; line-height: 1.15;}
+.pay-lock { font-size: 12.5px; color: var(--faint); margin-top: 6px; display: flex; align-items: center; justify-content: center; gap: 5px;}
+.pay-order-line { text-align: center; font-size: 12.5px; color: var(--faint); margin-top: 8px;}
+.pay-items { margin-top: 14px; border-top: 1px solid var(--line);}
+.pay-item { display: flex; justify-content: space-between; gap: 12px; padding: 9px 0; border-bottom: 1px solid var(--line); font-size: 14px;}
+.pay-item .pi-name { flex: 1; min-width: 0;}
+.pay-item .pi-name span { color: var(--sub); font-size: 12.5px; display: block; margin-top: 1px;}
+.pay-item .pi-amt { font-weight: 600; white-space: nowrap;}
+.pay-section-label { font-size: 13px; font-weight: 700; color: var(--sub); margin: 18px 0 8px;}
+.pay-methods { display: flex; flex-direction: column; gap: 10px;}
+.pay-method {
+display: flex; align-items: center; gap: 12px; width: 100%; text-align: left;
+background: var(--surface); border: 1.5px solid var(--line); border-radius: 16px; padding: 13px 14px;
+}
+.pay-method.on { border-color: var(--ink);}
+.pay-method .pm-info { flex: 1; min-width: 0;}
+.pay-method .pm-name { font-size: 15.5px; font-weight: 600; display: flex; align-items: center; gap: 8px;}
+.pay-method .pm-desc { font-size: 12.5px; color: var(--sub); margin-top: 1px;}
+.rec-tag { font-size: 10.5px; font-weight: 700; color: #fff; background: var(--wx); padding: 2px 7px; border-radius: 999px;}
+.brand-ico { width: 40px; height: 40px; border-radius: 11px; flex: none; display: flex; align-items: center; justify-content: center; color: #fff;}
+.brand-ico.wx { background: var(--wx);}
+.brand-ico.ali { background: var(--ali); font-size: 20px; font-weight: 800; line-height: 1;}
+.pay-radio { width: 21px; height: 21px; border-radius: 50%; border: 2px solid var(--line); flex: none; position: relative;}
+.pay-method.on .pay-radio { border-color: var(--accent);}
+.pay-method.on .pay-radio::after { content: ""; position: absolute; inset: 4px; border-radius: 50%; background: var(--accent);}
+.primary-btn.wx { background: var(--wx);}
+.primary-btn.wx:active { background: var(--wx-press);}
+.primary-btn.ali { background: var(--ali);}
+.primary-btn.ali:active { background: var(--ali-press);}
+.primary-btn.wx:disabled,.primary-btn.ali:disabled { background: var(--chip); color: var(--faint);}
+.ghost-link-btn { display: block; width: 100%; text-align: center; padding: 12px 8px 2px; color: var(--accent); font-size: 14px; font-weight: 500;}
+.sim-badge { display: inline-block; font-size: 11.5px; font-weight: 700; padding: 3px 9px; border-radius: 999px; background: var(--chip); color: var(--sub);}
+.sim-head { border-radius: 18px; padding: 18px 16px; color: #fff; margin-top: 12px; text-align: center;}
+.sim-head.wx { background: var(--wx);}
+.sim-head.ali { background: var(--ali);}
+.sim-head .sim-merchant { font-size: 14px; opacity: 0.92;}
+.sim-head .sim-amount { font-size: 38px; font-weight: 800; letter-spacing: -0.02em; margin-top: 4px; line-height: 1.15;}
+.sim-head .sim-method-name { font-size: 13px; opacity: 0.92; margin-top: 4px;}
+.sim-rows { margin-top: 14px;}
+.sim-rows .srow { display: flex; justify-content: space-between; gap: 16px; font-size: 14px; padding: 8px 0; border-bottom: 1px solid var(--line);}
+.sim-rows .srow span:first-child { color: var(--sub); flex: none;}
+.sim-rows .srow span:last-child { text-align: right; word-break: break-all;}
+.spinner { display: inline-block; width: 16px; height: 16px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.45); border-top-color: #fff; vertical-align: -3px; margin-right: 8px; animation: spin 0.7s linear infinite;}
+@keyframes spin { to { transform: rotate(360deg);}}
+@media (prefers-reduced-motion: reduce) {.spinner { animation-duration: 1.6s;}}
+.done-wrap { text-align: center; padding-top: 6px;}
+.done-icon { width: 66px; height: 66px; border-radius: 50%; background: var(--ok-bg); color: var(--ok); display: flex; align-items: center; justify-content: center; margin: 6px auto 10px;}
+.done-amount { font-size: 28px; font-weight: 800; letter-spacing: -0.02em; margin-top: 2px;}
+.done-rows { text-align: left; margin-top: 14px;}
+.done-rows .srow { display: flex; justify-content: space-between; gap: 16px; font-size: 14px; padding: 8px 0; border-bottom: 1px solid var(--line);}
+.done-rows .srow span:first-child { color: var(--sub); flex: none;}
+.done-rows .srow b { font-weight: 600; text-align: right;}
+.done-rows .paid-yes { color: var(--ok);}
+.sheet > .primary-btn { margin-top: 12px;}
+.sheet > .primary-btn + .primary-btn { margin-top: 10px;}
+
+/* ---------- Toast ---------- */
+.toast {
+position: fixed; left: 50%; bottom: calc(92px + env(safe-area-inset-bottom)); z-index: 60;
+transform: translate(-50%, 16px); opacity: 0; pointer-events: none;
+background: var(--ink); color: var(--bg);
+font-size: 13.5px; font-weight: 500; padding: 10px 18px; border-radius: 999px;
+transition: opacity 0.2s ease, transform 0.2s ease; white-space: nowrap;
+max-width: calc(100vw - 48px); overflow: hidden; text-overflow: ellipsis;
+}
+.toast.show { opacity: 1; transform: translate(-50%, 0);}
+</style>
+</head>
+<body>
+<div class="app">
+<main>
+<!-- ============ 商品 ============ -->
+<section class="view active" id="view-shop">
+<div class="shop-head">
+<h1 class="shop-title">今天买点什么<small>山姆全国购 · 社群代购下单</small></h1>
+<div class="searchbar">
+<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.8-3.8"/></svg>
+<input id="searchInput" type="search" placeholder="搜索商品，如：坚果、蛋黄酥" autocomplete="off" />
+<button class="search-clear" id="searchClear" aria-label="清除搜索">✕</button>
+</div>
+</div>
+<div class="chips" id="chips"></div>
+<p class="result-line" id="resultLine"></p>
+<div class="grid" id="grid"></div>
+<div class="empty" id="shopEmpty" hidden>
+<svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.8-3.8"/><path d="M8.5 11h5"/></svg>
+<p>没有找到相关商品，换个关键词试试</p>
+<button class="ghost-btn" id="emptyReset">查看全部商品</button>
+</div>
+</section>
+
+<!-- ============ 分类 ============ -->
+<section class="view" id="view-cat">
+<div class="page-head"><h2>分类</h2><span class="head-note" id="catNote"></span></div>
+<div class="cat-layout">
+<nav class="cat-rail" id="catRail" aria-label="商品分类"></nav>
+<div class="cat-main" id="catMain"></div>
+</div>
+</section>
+
+<!-- ============ 购物车 ============ -->
+<section class="view" id="view-cart">
+<div class="page-head">
+<h2>购物车</h2>
+<button class="text-btn" id="clearCartBtn" hidden>清空</button>
+</div>
+<div class="cart-list" id="cartList"></div>
+<div class="empty" id="cartEmpty">
+<svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h2l2.4 11.2a1.5 1.5 0 0 0 1.5 1.2h7.9a1.5 1.5 0 0 0 1.5-1.2L21 8H7"/><circle cx="10.5" cy="21" r="0.6" fill="currentColor"/><circle cx="17.5" cy="21" r="0.6" fill="currentColor"/></svg>
+<p>购物车还是空的</p>
+<button class="ghost-btn" id="goShopBtn">去逛逛</button>
+</div>
+<div class="summary" id="cartSummary" hidden>
+<div class="srow"><span>商品种类</span><span id="sumKinds">0 种</span></div>
+<div class="srow"><span>商品件数</span><span id="sumCount">0 件</span></div>
+<div class="srow total"><span>合计</span><span id="sumTotal">¥0.00</span></div>
+<button class="primary-btn" id="checkoutBtn">去结算</button>
+</div>
+</section>
+
+<!-- ============ 我的 ============ -->
+<section class="view" id="view-me">
+<div class="page-head"><h2>我的</h2></div>
+<div class="profile">
+<div class="avatar" aria-hidden="true">
+<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4.5 20.5c1.4-3.6 4.2-5.4 7.5-5.4s6.1 1.8 7.5 5.4"/></svg>
+</div>
+<div>
+<div class="p-name">社群成员</div>
+<div class="p-sub" id="profileSub">收货信息还没填写，下单前填好更方便</div>
+</div>
+</div>
+<div class="stat-row">
+<div class="stat"><b id="statKinds">0</b><span>已选种类</span></div>
+<div class="stat"><b id="statCount">0</b><span>购物车件数</span></div>
+<div class="stat"><b id="statTotal">¥0</b><span>购物车金额</span></div>
+</div>
+<div class="form-card">
+<h3>收货信息</h3>
+<div class="field">
+<label for="fName">姓名</label>
+<input id="fName" type="text" placeholder="如：李星星" autocomplete="name" />
+</div>
+<div class="field">
+<label for="fPhone">手机号</label>
+<input id="fPhone" type="tel" placeholder="用于联系取货" autocomplete="tel" />
+</div>
+<div class="field">
+<label for="fAddr">收货地址</label>
+<textarea id="fAddr" rows="2" placeholder="如：XX小区 3号楼 2单元 501"></textarea>
+</div>
+</div>
+<div class="menu-card">
+<button class="menu-row" id="menuOrder"><span>我生成的订单</span><span class="chev">›</span></button>
+<button class="menu-row" id="menuCart"><span>去购物车结算</span><span class="chev">›</span></button>
+<button class="menu-row danger" id="menuClear"><span>清空购物车</span><span></span></button>
+</div>
+</section>
+</main>
+
+<!-- ============ Bottom nav ============ -->
+<nav class="tabbar" aria-label="主导航">
+<button class="tab on" data-view="shop">
+<svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7.5L5.6 4h12.8L20 7.5M4 7.5h16M4 7.5V19a1.5 1.5 0 0 0 1.5 1.5h13A1.5 1.5 0 0 0 20 19V7.5"/><path d="M9.5 20.5v-6h5v6"/></svg>
+商品
+</button>
+<button class="tab" data-view="cat">
+<svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="4" y="4" width="7" height="7" rx="1.6"/><rect x="13" y="4" width="7" height="7" rx="1.6"/><rect x="4" y="13" width="7" height="7" rx="1.6"/><rect x="13" y="13" width="7" height="7" rx="1.6"/></svg>
+分类
+</button>
+<button class="tab" data-view="cart">
+<svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h2l2.4 11.2a1.5 1.5 0 0 0 1.5 1.2h7.9a1.5 1.5 0 0 0 1.5-1.2L21 8H7"/><circle cx="10.5" cy="21" r="0.8" fill="currentColor" stroke="none"/><circle cx="17.5" cy="21" r="0.8" fill="currentColor" stroke="none"/></svg>
+购物车
+<span class="badge" id="cartBadge">0</span>
+</button>
+<button class="tab" data-view="me">
+<svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4.5 20.5c1.4-3.6 4.2-5.4 7.5-5.4s6.1 1.8 7.5 5.4"/></svg>
+我的
+</button>
+</nav>
+</div>
+
+<!-- ============ Product detail sheet ============ -->
+<div class="scrim" id="scrim"></div>
+<div class="sheet" id="detailSheet" role="dialog" aria-modal="true" aria-label="商品详情">
+<div class="grab"></div>
+<div class="sheet-img" id="dImgWrap"></div>
+<h3 id="dName"></h3>
+<div class="d-spec" id="dSpec"></div>
+<p class="d-desc" id="dDesc"></p>
+<div class="sheet-foot">
+<div>
+<div class="price" id="dPrice"></div>
+<div id="dStepper" style="margin-top:8px"></div>
+</div>
+<button class="primary-btn" id="dAddBtn">加入购物车</button>
+</div>
+</div>
+
+<!-- ============ Payment sheet: confirm order + choose method ============ -->
+<div class="sheet" id="paySheet" role="dialog" aria-modal="true" aria-label="确认订单">
+<div class="grab"></div>
+<h3 style="margin-top:2px">确认订单</h3>
+<div class="d-spec" id="payCountLine">共 0 件商品</div>
+<div class="pay-amount-box">
+<div class="pay-amount-label">应付金额</div>
+<div class="pay-amount" id="payAmount">¥0.00</div>
+<div class="pay-lock">
+<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>
+金额按购物车合计自动生成，不可修改
+</div>
+<div class="pay-order-line">订单号 <span id="payOrderNo">—</span></div>
+</div>
+<div class="pay-items" id="payItems"></div>
+<p class="hint" id="payInfoHint"></p>
+<button class="primary-btn" id="payFillInfoBtn" style="background:var(--chip);color:var(--accent)" hidden>先去填写收货信息</button>
+<div class="pay-section-label">支付方式</div>
+<div class="pay-methods" id="payMethods">
+<button class="pay-method on" data-method="wechat" type="button">
+<span class="brand-ico wx" aria-hidden="true">
+<svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8.6 4C5 4 2 6.6 2 9.9c0 1.9 1 3.5 2.6 4.7L4 17l2.6-1.3c.6.2 1.3.3 2 .3.4 0 .7 0 1-.1A5.4 5.4 0 0 1 9 13.6C9 10.5 11.9 8 15.5 8h.6C15.3 5.7 12.2 4 8.6 4Zm-2 3.2a1 1 0 1 1 0 2 1 1 0 0 1 0-2Zm5.8 0a1 1 0 1 1 0 2 1 1 0 0 1 0-2ZM22 13.6c0-3-2.8-5.5-6.3-5.5-3.4 0-6.2 2.5-6.2 5.5s2.8 5.5 6.2 5.5c.6 0 1.2-.1 1.8-.3L19.7 20l-.5-1.9c1.7-1 2.8-2.6 2.8-4.5Zm-8.6-1.8a.9.9 0 1 1 0-1.8.9.9 0 0 1 0 1.8Zm5 0a.9.9 0 1 1 0-1.8.9.9 0 0 1 0 1.8Z"/></svg>
+</span>
+<span class="pm-info"><span class="pm-name">微信支付 <span class="rec-tag">推荐</span></span><span class="pm-desc">社群成员最常用，付款后订单自动标记已付款</span></span>
+<span class="pay-radio" aria-hidden="true"></span>
+</button>
+<button class="pay-method" data-method="alipay" type="button">
+<span class="brand-ico ali" aria-hidden="true">支</span>
+<span class="pm-info"><span class="pm-name">支付宝</span><span class="pm-desc">用支付宝余额或绑定的银行卡付款</span></span>
+<span class="pay-radio" aria-hidden="true"></span>
+</button>
+</div>
+<button class="primary-btn wx" id="confirmPayBtn" style="margin-top:16px;flex:none;width:100%">确认支付</button>
+<button class="ghost-link-btn" id="payCopyOnlyBtn" type="button">仅生成订单文字，稍后再付 ›</button>
+<p class="hint" style="text-align:center">当前为模拟付款，不会产生真实扣款</p>
+</div>
+
+<!-- ============ Simulated payment sheet ============ -->
+<div class="sheet" id="paySimSheet" role="dialog" aria-modal="true" aria-label="模拟付款">
+<div class="grab"></div>
+<div style="display:flex;align-items:center;justify-content:space-between;gap:12px">
+<h3 style="margin-top:2px">付款</h3>
+<span class="sim-badge">模拟付款 · 不会真实扣款</span>
+</div>
+<div class="sim-head wx" id="simHead">
+<div class="sim-merchant">社群团购</div>
+<div class="sim-amount" id="simAmount">¥0.00</div>
+<div class="sim-method-name" id="simMethodName">微信支付</div>
+</div>
+<div class="sim-rows">
+<div class="srow"><span>订单号</span><span id="simOrderNo">—</span></div>
+<div class="srow"><span>商品</span><span id="simGoodsLine">—</span></div>
+<div class="srow"><span>金额来源</span><span>订单合计，自动生成</span></div>
+</div>
+<button class="primary-btn wx" id="simPayBtn" style="margin-top:16px;flex:none;width:100%">确认支付</button>
+<button class="ghost-link-btn" id="simCancelBtn" type="button">取消支付</button>
+</div>
+
+<!-- ============ Payment success sheet ============ -->
+<div class="sheet" id="payDoneSheet" role="dialog" aria-modal="true" aria-label="支付成功">
+<div class="grab"></div>
+<div class="done-wrap">
+<div class="done-icon" aria-hidden="true">
+<svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 12.5l5 5L19.5 7"/></svg>
+</div>
+<h3 style="margin-top:2px">支付成功（模拟）</h3>
+<div class="done-amount" id="doneAmount">¥0.00</div>
+</div>
+<div class="done-rows">
+<div class="srow"><span>订单号</span><b id="doneOrderNo">—</b></div>
+<div class="srow"><span>支付方式</span><b id="doneMethod">—</b></div>
+<div class="srow"><span>支付状态</span><b class="paid-yes">已付款（模拟）</b></div>
+</div>
+<div class="order-text" id="doneOrderText"></div>
+<p class="hint">支付状态：已付款（模拟付款，未真实扣款）。这份订单是流程演示，接通微信 / 支付宝商户号后才会真实收款并发货。</p>
+<button class="primary-btn" id="copyDoneBtn">复制订单</button>
+<button class="primary-btn" id="doneFinishBtn" style="background:var(--chip);color:var(--accent)">完成</button>
+</div>
+
+<!-- ============ Order sheet ============ -->
+<div class="sheet" id="orderSheet" role="dialog" aria-modal="true" aria-label="订单">
+<div class="grab"></div>
+<h3 style="margin-top:2px">订单已生成</h3>
+<div class="d-spec">把下面这段订单发给群主，就算下单成功</div>
+<div class="order-text" id="orderText"></div>
+<p class="hint" id="orderHint"></p>
+<button class="primary-btn" id="copyOrderBtn">复制订单</button>
+<button class="primary-btn" id="fillInfoBtn" style="background:var(--chip);color:var(--accent)" hidden>先去填写收货信息</button>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ================= Catalog: 休闲零食两个分类，图片暂时空着 ================= */
+var PRODUCTS = [
+/* ---- 休闲零食 · 新品上市（14款，山姆价） ---- */
+{ id: "n1", name: "MM 低糖蛋黄酥", cat: "新品上市", price: 42.80, spec: "730g（14枚）", img: "", tag: "新品", desc: "添加6%安佳黄油。"},
+{ id: "n2", name: "MM苹果干", cat: "新品上市", price: 56.90, spec: "650g", img: "", tag: "新品", desc: "一块苹果干≈半个苹果。"},
+{ id: "n3", name: "Irvin 咸蛋黄马铃薯片", cat: "新品上市", price: 69.90, spec: "240g", img: "", tag: "新品", desc: "新加坡进口 · 17%真实咸蛋黄。"},
+{ id: "n4", name: "布列塔尼黄油饼干", cat: "新品上市", price: 59.90, spec: "350g", img: "", tag: "新品", desc: "法国总统发酵黄油。"},
+{ id: "n5", name: "农心 韩式1根红参鸡腿汤面", cat: "新品上市", price: 79.90, spec: "280g×5", img: "", tag: "新品", desc: "经典韩式参鸡汤，参香浓郁。"},
+{ id: "n6", name: "都乐无核胭脂李干", cat: "新品上市", price: 49.90, spec: "520g", img: "", tag: "新品", desc: "配料表仅李子和食用盐。"},
+{ id: "n7", name: "饪掌门 云南小锅米线", cat: "新品上市", price: 79.90, spec: "265.5g×5", img: "", tag: "新品", desc: "汤池老酱 × 昭通酱，非遗双酱。"},
+{ id: "n8", name: "进口 黑橄榄番茄味脆饼干", cat: "新品上市", price: 72.90, spec: "100g×5", img: "", tag: "新品", desc: "7%番茄干 · 5%黑橄榄。"},
+{ id: "n9", name: "鲍之源鲍汁花胶蹄筋烩鲍鱼", cat: "新品上市", price: 89.90, spec: "160g×4", img: "", tag: "新品", desc: "6头鲜鲍，优质蛋白。"},
+{ id: "n10", name: "圃美多 日式双味腐皮乌冬面", cat: "新品上市", price: 79.90, spec: "231g×5", img: "", tag: "新品", desc: "筋道爽滑粗制乌冬面。"},
+{ id: "n11", name: "农心 鸡腿形迷你脆", cat: "新品上市", price: 55.90, spec: "66g×8", img: "", tag: "新品", desc: "韩国原装进口 · 可爱鸡腿造型。"},
+{ id: "n12", name: "壮元海海鲜速食汤", cat: "新品上市", price: 39.90, spec: "86g", img: "", tag: "新品", desc: "深海虾夷扇贝丝。"},
+{ id: "n13", name: "饪掌门 蟹黄蟹肉炒牛肝菌酱", cat: "新品上市", price: 99.90, spec: "80g×5", img: "", tag: "新品", desc: "鲜蒸大闸蟹，95°C蒸煮锁鲜。"},
+{ id: "n14", name: "进口 蜂蜜烧烤黑松露味马铃薯片", cat: "新品上市", price: 45.90, spec: "300g", img: "", tag: "新品", desc: "原切薯片 · 西班牙进口。"},
+/* ---- 休闲零食 · 低糖/低GI（16款，山姆价） ---- */
+{ id: "g1", name: "Member's Mark 每日坚果", cat: "低糖/低GI", price: 99.00, spec: "900g", img: "", tag: "", desc: "低糖/低GI分类商品 · 山姆全国配。"},
+{ id: "g2", name: "Member's Mark 无糖芝麻酥", cat: "低糖/低GI", price: 49.90, spec: "650g", img: "", tag: "", desc: "低糖/低GI分类商品 · 山姆全国配。"},
+{ id: "g3", name: "蛋皇 溏心鹌鹑蛋", cat: "低糖/低GI", price: 79.90, spec: "800g", img: "", tag: "", desc: "低糖/低GI分类商品 · 山姆全国配。"},
+{ id: "g4", name: "Member's Mark 智利无核西梅干", cat: "低糖/低GI", price: 59.90, spec: "860g", img: "", tag: "", desc: "低糖/低GI分类商品 · 山姆全国配。"},
+{ id: "g5", name: "纯鳕 高蛋白鳕鱼卷", cat: "低糖/低GI", price: 59.90, spec: "640g", img: "", tag: "", desc: "低糖/低GI分类商品 · 山姆全国配。"},
+{ id: "g6", name: "Member's Mark 红瑶蜜薯干", cat: "低糖/低GI", price: 39.80, spec: "600g", img: "", tag: "", desc: "低糖/低GI分类商品 · 山姆全国配。"},
+{ id: "g7", name: "NUTHING 开心果裹腰果仁", cat: "低糖/低GI", price: 79.90, spec: "550g", img: "", tag: "", desc: "低糖/低GI分类商品 · 山姆全国配。"},
+{ id: "g8", name: "SUPER SEED NUTS 低GI缤纷籽仁坚果脆", cat: "低糖/低GI", price: 69.90, spec: "630g", img: "", tag: "", desc: "低糖/低GI分类商品 · 山姆全国配。"},
+{ id: "g9", name: "Peelerz 剥皮软糖", cat: "低糖/低GI", price: 59.90, spec: "1050g", img: "", tag: "", desc: "低糖/低GI分类商品 · 山姆全国配。"},
+{ id: "g10", name: "奥利奥 薄脆0糖低GI黑巧味", cat: "低糖/低GI", price: 45.90, spec: "655g", img: "", tag: "", desc: "低糖/低GI分类商品 · 山姆全国配。"},
+{ id: "g11", name: "DGI 低GI 五黑坚果脆", cat: "低糖/低GI", price: 79.90, spec: "500g", img: "", tag: "", desc: "低糖/低GI分类商品 · 山姆全国配。"},
+{ id: "g12", name: "低GI鹰嘴豆白芸豆沙", cat: "低糖/低GI", price: 59.90, spec: "228g×8", img: "", tag: "", desc: "低糖/低GI分类商品 · 山姆全国配。"},
+{ id: "g13", name: "Uncle Tobys 低糖高蛋白海苔果仁脆", cat: "低糖/低GI", price: 64.90, spec: "450g", img: "", tag: "", desc: "低糖/低GI分类商品 · 山姆全国配。"},
+{ id: "g14", name: "Ritz 鹰嘴豆脆片酸奶油洋葱味", cat: "低糖/低GI", price: 49.90, spec: "400g", img: "", tag: "", desc: "低糖/低GI分类商品 · 山姆全国配。"},
+{ id: "g15", name: "玛氏箭牌 木糖醇0糖脆皮软心口香糖", cat: "低糖/低GI", price: 69.90, spec: "500g", img: "", tag: "", desc: "低糖/低GI分类商品 · 山姆全国配。"},
+{ id: "g16", name: "奥赛 高膳食纤维山楂棒（果糕类蜜饯）", cat: "低糖/低GI", price: 49.90, spec: "750g", img: "", tag: "", desc: "低糖/低GI分类商品 · 山姆全国配。"}
+];
+var CATS = ["全部", "新品上市", "低糖/低GI"];
+
+/* Product visual: real photo when present, name placeholder while images are empty */
+function visualHTML(p) {
+if (p.img) return '<img src="' + p.img + '" alt="' + p.name + '" loading="lazy" />';
+return '<div class="ph" aria-hidden="true"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="4.5" width="17" height="15" rx="2.5"/><circle cx="9" cy="10" r="1.6"/><path d="M4 18l5-5 3.5 3.5L16 13l4 4"/></svg><span class="ph-name">' + p.name + '</span><small>暂无图片</small></div>';
+}
+
+/* ================= State (in-memory only) ================= */
+var cart = {}; // id -> qty
+var filterCat = "全部";
+var keyword = "";
+var detailId = null;
+var lastOrder = "";
+var payMethod = "wechat"; // "wechat" | "alipay"
+var pending = null; // { no, total, count, kinds } locked at checkout time
+var lastPaid = null; // { no, method, total }
+var payTimer = null;
+
+var $ = function (s) { return document.querySelector(s);};
+function money(n) { return "¥" + n.toFixed(2);}
+function byId(id) { for (var i = 0; i < PRODUCTS.length; i++) if (PRODUCTS[i].id === id) return PRODUCTS[i]; return null;}
+function cartCount() { var n = 0; for (var k in cart) n += cart[k]; return n;}
+function cartKinds() { var n = 0; for (var k in cart) if (cart[k] > 0) n++; return n;}
+function cartTotal() { var t = 0; for (var k in cart) t += byId(k).price * cart[k]; return t;}
+
+var toastTimer = null;
+function toast(msg) {
+var el = $("#toast"); el.textContent = msg; el.classList.add("show");
+clearTimeout(toastTimer);
+toastTimer = setTimeout(function () { el.classList.remove("show");}, 1800);
+}
+
+/* ================= Stepper / add control ================= */
+function controlHTML(p) {
+var q = cart[p.id] || 0;
+if (q === 0) return '<button class="add-btn" data-add="' + p.id + '">加入购物车</button>';
+return '<span class="stepper">'
++ '<button class="minus" data-dec="' + p.id + '" aria-label="减少数量">−</button>'
++ '<span class="qty">' + q + '</span>'
++ '<button class="plus" data-inc="' + p.id + '" aria-label="增加数量">+</button>'
++ '</span>';
+}
+function controlHTMLLg(p) {
+var q = cart[p.id] || 0;
+if (q === 0) return '<span style="font-size:13px;color:var(--sub)">尚未加入购物车</span>';
+return '<span class="stepper lg">'
++ '<button class="minus" data-dec="' + p.id + '" aria-label="减少数量">−</button>'
++ '<span class="qty">' + q + '</span>'
++ '<button class="plus" data-inc="' + p.id + '" aria-label="增加数量">+</button>'
++ '</span>';
+}
+
+function setQty(id, qty, silent) {
+if (qty <= 0) delete cart[id]; else cart[id] = Math.min(qty, 99);
+renderAll();
+if (!silent && qty > 0) bumpBadge();
+}
+function bumpBadge() {
+var b = $("#cartBadge");
+b.classList.remove("bump"); void b.offsetWidth; b.classList.add("bump");
+}
+
+/* ================= Render: shop ================= */
+function matches(p) {
+if (filterCat!== "全部" && p.cat!== filterCat) return false;
+if (keyword) {
+var hay = (p.name + " " + p.cat + " " + p.spec).toLowerCase();
+if (hay.indexOf(keyword.toLowerCase()) === -1) return false;
+}
+return true;
+}
+function renderChips() {
+$("#chips").innerHTML = CATS.map(function (c) {
+return '<button class="chip' + (c === filterCat? " on": "") + '" data-chip="' + c + '">' + c + "</button>";
+}).join("");
+}
+function renderGrid() {
+var list = PRODUCTS.filter(matches);
+$("#grid").innerHTML = list.map(function (p) {
+return '<article class="card" data-open="' + p.id + '">'
++ '<div class="card-img">' + visualHTML(p)
++ (p.tag? '<span class="tag' + (p.tag === "热卖"? " hot": "") + '">' + p.tag + "</span>": "")
++ "</div>"
++ '<div class="card-name">' + p.name + "</div>"
++ '<div class="card-spec">' + p.spec + " · " + p.cat + "</div>"
++ '<div class="card-foot"><span class="price">' + money(p.price) + "</span>" + controlHTML(p) + "</div>"
++ "</article>";
+}).join("");
+$("#shopEmpty").hidden = list.length > 0;
+$("#grid").style.display = list.length? "": "none";
+var rl = $("#resultLine");
+if (keyword) {
+rl.textContent = "搜索“" + keyword + "” · 共 " + list.length + " 件商品";
+rl.classList.add("show");
+} else rl.classList.remove("show");
+}
+
+/* ================= Render: category ================= */
+function renderCats() {
+$("#catRail").innerHTML = CATS.map(function (c) {
+var n = c === "全部"? PRODUCTS.length: PRODUCTS.filter(function (p) { return p.cat === c;}).length;
+return '<button data-cat="' + c + '"' + (c === filterCat? ' class="on"': "") + ">" + c
++ '<span class="cnt">' + n + " 件</span></button>";
+}).join("");
+var list = PRODUCTS.filter(function (p) { return filterCat === "全部" || p.cat === filterCat;});
+$("#catNote").textContent = filterCat + " · " + list.length + " 件";
+$("#catMain").innerHTML = list.map(function (p) {
+return '<div class="row-item" data-open="' + p.id + '">'
++ visualHTML(p)
++ '<div class="row-info"><div class="row-name">' + p.name + '</div>'
++ '<div class="row-spec">' + p.spec + "</div>"
++ '<div class="row-foot"><span class="price">' + money(p.price) + "</span>" + controlHTML(p) + "</div></div></div>";
+}).join("") || '<div class="empty"><p>这个分类暂时没有商品</p></div>';
+}
+
+/* ================= Render: cart ================= */
+function renderCart() {
+var ids = Object.keys(cart).filter(function (k) { return cart[k] > 0;});
+$("#cartEmpty").hidden = ids.length > 0;
+$("#cartSummary").hidden = ids.length === 0;
+$("#clearCartBtn").hidden = ids.length === 0;
+$("#cartList").innerHTML = ids.map(function (id) {
+var p = byId(id), q = cart[id];
+return '<div class="cart-item">'
++ visualHTML(p)
++ '<div class="cart-info"><div class="cart-top"><div><div class="cart-name">' + p.name + '</div>'
++ '<div class="cart-spec">' + p.spec + " · " + money(p.price) + "/份</div></div>"
++ '<button class="del-btn" data-del="' + id + '" aria-label="删除' + p.name + '">'
++ '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 7h16M9 7V5a1.5 1.5 0 0 1 1.5-1.5h3A1.5 1.5 0 0 1 15 5v2M6.5 7l1 13h9l1-13"/></svg>'
++ "</button></div>"
++ '<div class="cart-foot"><span class="stepper">'
++ '<button class="minus" data-dec="' + id + '" aria-label="减少数量">−</button>'
++ '<span class="qty">' + q + "</span>"
++ '<button class="plus" data-inc="' + id + '" aria-label="增加数量">+</button></span>'
++ '<span class="line-total">小计 <b>' + money(p.price * q) + "</b></span></div></div></div>";
+}).join("");
+$("#sumKinds").textContent = cartKinds() + " 种";
+$("#sumCount").textContent = cartCount() + " 件";
+$("#sumTotal").textContent = money(cartTotal());
+}
+
+/* ================= Render: me + badge ================= */
+function renderMe() {
+$("#statKinds").textContent = cartKinds();
+$("#statCount").textContent = cartCount();
+$("#statTotal").textContent = "¥" + Math.round(cartTotal());
+var name = $("#fName").value.trim();
+$("#profileSub").textContent = name
+? name + " · 收货信息已填写，生成订单时会自动带上"
+: "收货信息还没填写，下单前填好更方便";
+}
+function renderBadge() {
+var b = $("#cartBadge"), n = cartCount();
+b.textContent = n; b.classList.toggle("show", n > 0);
+}
+function renderAll() {
+renderChips(); renderGrid(); renderCats(); renderCart(); renderMe(); renderBadge();
+if (detailId) renderDetailStepper();
+}
+
+/* ================= Views ================= */
+function switchView(name) {
+document.querySelectorAll(".view").forEach(function (v) { v.classList.remove("active");});
+$("#view-" + name).classList.add("active");
+document.querySelectorAll(".tab").forEach(function (t) {
+t.classList.toggle("on", t.dataset.view === name);
+});
+window.scrollTo(0, 0);
+}
+document.querySelectorAll(".tab").forEach(function (t) {
+t.addEventListener("click", function () { switchView(t.dataset.view);});
+});
+$("#goShopBtn").addEventListener("click", function () { switchView("shop");});
+$("#menuCart").addEventListener("click", function () { switchView("cart");});
+
+/* ================= Search & chips ================= */
+var searchInput = $("#searchInput");
+searchInput.addEventListener("input", function () {
+keyword = searchInput.value.trim();
+$("#searchClear").classList.toggle("show", keyword.length > 0);
+renderGrid();
+});
+function resetSearch() {
+keyword = ""; searchInput.value = "";
+$("#searchClear").classList.remove("show");
+filterCat = "全部"; renderChips(); renderGrid(); renderCats();
+}
+$("#searchClear").addEventListener("click", function () {
+keyword = ""; searchInput.value = ""; $("#searchClear").classList.remove("show"); renderGrid(); searchInput.focus();
+});
+$("#emptyReset").addEventListener("click", resetSearch);
+$("#chips").addEventListener("click", function (e) {
+var b = e.target.closest("[data-chip]"); if (!b) return;
+filterCat = b.dataset.chip; renderChips(); renderGrid(); renderCats();
+});
+$("#catRail").addEventListener("click", function (e) {
+var b = e.target.closest("[data-cat]"); if (!b) return;
+filterCat = b.dataset.cat; renderCats(); renderChips(); renderGrid();
+});
+
+/* ================= Cart actions (event delegation) ================= */
+document.addEventListener("click", function (e) {
+var add = e.target.closest("[data-add]");
+if (add) { e.stopPropagation(); setQty(add.dataset.add, 1); toast("已加入购物车：" + byId(add.dataset.add).name); return;}
+var inc = e.target.closest("[data-inc]");
+if (inc) { e.stopPropagation(); setQty(inc.dataset.inc, (cart[inc.dataset.inc] || 0) + 1, true); return;}
+var dec = e.target.closest("[data-dec]");
+if (dec) { e.stopPropagation(); setQty(dec.dataset.dec, (cart[dec.dataset.dec] || 0) - 1, true); return;}
+var del = e.target.closest("[data-del]");
+if (del) { e.stopPropagation(); var nm = byId(del.dataset.del).name; setQty(del.dataset.del, 0, true); toast("已移除：" + nm); return;}
+var open = e.target.closest("[data-open]");
+if (open) openDetail(open.dataset.open);
+});
+
+function clearCart(silent) {
+cart = {}; renderAll();
+if (!silent) toast("购物车已清空");
+}
+$("#clearCartBtn").addEventListener("click", function () { clearCart(false);});
+$("#menuClear").addEventListener("click", function () {
+if (cartCount() === 0) { toast("购物车已经是空的"); return;}
+clearCart(false);
+});
+
+/* ================= Detail sheet ================= */
+var scrim = $("#scrim");
+function openSheet(id) {
+scrim.classList.add("show");
+$("#" + id).classList.add("show");
+}
+function showSheetOnly(id) {
+document.querySelectorAll(".sheet").forEach(function (s) { s.classList.remove("show");});
+scrim.classList.add("show");
+$("#" + id).classList.add("show");
+detailId = null;
+}
+function closeSheets() {
+if (payTimer) { clearTimeout(payTimer); payTimer = null; resetSimPayBtn();}
+scrim.classList.remove("show");
+document.querySelectorAll(".sheet").forEach(function (s) { s.classList.remove("show");});
+detailId = null;
+}
+scrim.addEventListener("click", closeSheets);
+
+function openDetail(id) {
+detailId = id;
+var p = byId(id);
+$("#dImgWrap").innerHTML = visualHTML(p);
+$("#dName").textContent = p.name;
+$("#dSpec").textContent = p.spec + " · " + p.cat;
+$("#dDesc").textContent = p.desc;
+$("#dPrice").textContent = money(p.price);
+renderDetailStepper();
+openSheet("detailSheet");
+}
+function renderDetailStepper() {
+if (!detailId) return;
+$("#dStepper").innerHTML = controlHTMLLg(byId(detailId));
+var q = cart[detailId] || 0;
+$("#dAddBtn").textContent = q > 0? "再来一份": "加入购物车";
+}
+$("#dAddBtn").addEventListener("click", function () {
+if (!detailId) return;
+setQty(detailId, (cart[detailId] || 0) + 1);
+toast("已加入购物车：" + byId(detailId).name);
+});
+
+/* ================= Order generation + simulated payment ================= */
+function methodName(m) { return m === "alipay" ? "支付宝" : "微信支付";}
+function methodClass(m) { return m === "alipay" ? "ali" : "wx";}
+function genOrderNo() {
+var d = new Date();
+function pad(n) { return (n < 10 ? "0" : "") + n;}
+var stamp = "" + d.getFullYear() + pad(d.getMonth() + 1) + pad(d.getDate()) + pad(d.getHours()) + pad(d.getMinutes()) + pad(d.getSeconds());
+var rand = Math.floor(1000 + Math.random() * 9000);
+return "SQ" + stamp + rand;
+}
+function buildOrderText(payInfo) {
+var lines = ["【社群订单】"];
+if (pending && pending.no) lines.push("订单号：" + pending.no);
+Object.keys(cart).filter(function (k) { return cart[k] > 0;}).forEach(function (id) {
+var p = byId(id);
+lines.push("· " + p.name + "（" + p.spec + "）× " + cart[id] + " " + money(p.price * cart[id]));
+});
+lines.push("合计：" + money(cartTotal()) + "（共 " + cartCount() + " 件）");
+if (payInfo && payInfo.paid) {
+lines.push("支付状态：已付款（模拟付款，未真实扣款 · " + methodName(payInfo.method) + " " + money(payInfo.total) + "）");
+} else if (pending) {
+lines.push("支付状态：待付款");
+}
+var name = $("#fName").value.trim(), phone = $("#fPhone").value.trim(), addr = $("#fAddr").value.trim();
+if (name || phone || addr) {
+lines.push("———");
+if (name) lines.push("姓名：" + name);
+if (phone) lines.push("手机：" + phone);
+if (addr) lines.push("地址：" + addr);
+}
+return lines.join("\n");
+}
+function hasInfo() {
+return $("#fName").value.trim() && $("#fPhone").value.trim() && $("#fAddr").value.trim();
+}
+function fillOrderSheet(hintText) {
+$("#orderText").textContent = lastOrder;
+var ok = hasInfo();
+$("#orderHint").textContent = hintText || (ok
+? "订单里已带上你的收货信息，直接发送即可。"
+: "收货信息还没填全，群主可能联系不上你——建议先去「我的」里补上姓名、手机号和地址。");
+$("#fillInfoBtn").hidden = ok;
+}
+function renderPaySheet() {
+if (!pending) return;
+$("#payAmount").textContent = money(pending.total);
+$("#payOrderNo").textContent = pending.no;
+$("#payCountLine").textContent = "共 " + pending.kinds + " 种 · " + pending.count + " 件商品";
+$("#payItems").innerHTML = Object.keys(cart).filter(function (k) { return cart[k] > 0;}).map(function (id) {
+var p = byId(id);
+return '<div class="pay-item"><div class="pi-name">' + p.name + "<span>" + p.spec + " × " + cart[id] + "</span></div>"
++ '<div class="pi-amt">' + money(p.price * cart[id]) + "</div></div>";
+}).join("");
+var ok = hasInfo();
+$("#payInfoHint").textContent = ok
+? "订单里会带上你的收货信息，付款成功后把订单发给群主即可。"
+: "收货信息还没填全，群主可能联系不上你——建议先去「我的」里补上姓名、手机号和地址。";
+$("#payFillInfoBtn").hidden = ok;
+document.querySelectorAll(".pay-method").forEach(function (b) {
+b.classList.toggle("on", b.dataset.method === payMethod);
+});
+var btn = $("#confirmPayBtn");
+btn.className = "primary-btn " + methodClass(payMethod);
+btn.textContent = methodName(payMethod) + " " + money(pending.total);
+}
+function renderSimSheet() {
+if (!pending) return;
+$("#simHead").className = "sim-head " + methodClass(payMethod);
+$("#simAmount").textContent = money(pending.total);
+$("#simMethodName").textContent = methodName(payMethod);
+$("#simOrderNo").textContent = pending.no;
+$("#simGoodsLine").textContent = pending.kinds + " 种商品 · 共 " + pending.count + " 件";
+resetSimPayBtn();
+}
+function resetSimPayBtn() {
+var b = $("#simPayBtn");
+if (!b) return;
+b.disabled = false;
+b.className = "primary-btn " + methodClass(payMethod);
+b.textContent = pending ? ("确认支付 " + money(pending.total)) : "确认支付";
+}
+$("#checkoutBtn").addEventListener("click", function () {
+if (cartCount() === 0) return;
+pending = { no: genOrderNo(), total: cartTotal(), count: cartCount(), kinds: cartKinds()};
+lastPaid = null;
+renderPaySheet();
+showSheetOnly("paySheet");
+});
+$("#payMethods").addEventListener("click", function (e) {
+var b = e.target.closest("[data-method]"); if (!b) return;
+payMethod = b.dataset.method;
+renderPaySheet();
+});
+$("#confirmPayBtn").addEventListener("click", function () {
+if (!pending) return;
+renderSimSheet();
+showSheetOnly("paySimSheet");
+});
+$("#simCancelBtn").addEventListener("click", function () {
+if (payTimer) { clearTimeout(payTimer); payTimer = null;}
+resetSimPayBtn();
+renderPaySheet();
+showSheetOnly("paySheet");
+toast("已取消支付，订单还没付款");
+});
+$("#simPayBtn").addEventListener("click", function () {
+if (!pending || payTimer) return;
+var b = $("#simPayBtn");
+b.disabled = true;
+b.innerHTML = '<span class="spinner" aria-hidden="true"></span>支付处理中…';
+payTimer = setTimeout(function () {
+payTimer = null;
+lastPaid = { no: pending.no, method: payMethod, total: pending.total};
+lastOrder = buildOrderText({ paid: true, method: payMethod, total: pending.total});
+$("#doneAmount").textContent = money(lastPaid.total);
+$("#doneOrderNo").textContent = lastPaid.no;
+$("#doneMethod").textContent = methodName(lastPaid.method);
+$("#doneOrderText").textContent = lastOrder;
+cart = {};
+renderAll();
+resetSimPayBtn();
+showSheetOnly("payDoneSheet");
+toast("模拟支付成功");
+}, 1100);
+});
+$("#payCopyOnlyBtn").addEventListener("click", function () {
+if (!pending) return;
+lastOrder = buildOrderText(null);
+fillOrderSheet("这是待付款订单文字，复制发给群主后请再按约定完成付款。");
+showSheetOnly("orderSheet");
+});
+function goFillInfo() { closeSheets(); switchView("me"); $("#fName").focus();}
+$("#fillInfoBtn").addEventListener("click", goFillInfo);
+$("#payFillInfoBtn").addEventListener("click", goFillInfo);
+$("#doneFinishBtn").addEventListener("click", function () { closeSheets(); switchView("shop");});
+function copyText(text) {
+function done() { toast("订单已复制，去微信粘贴发给群主吧");}
+if (!text) { toast("还没有可复制的订单"); return;}
+if (navigator.clipboard && navigator.clipboard.writeText) {
+navigator.clipboard.writeText(text).then(done, function () { fallbackCopy(text); done();});
+} else { fallbackCopy(text); done();}
+}
+$("#copyOrderBtn").addEventListener("click", function () { copyText(lastOrder);});
+$("#copyDoneBtn").addEventListener("click", function () { copyText(lastOrder);});
+function fallbackCopy(text) {
+var ta = document.createElement("textarea");
+ta.value = text; ta.style.position = "fixed"; ta.style.opacity = "0";
+document.body.appendChild(ta); ta.select();
+try { document.execCommand("copy");} catch (err) {}
+document.body.removeChild(ta);
+}
+$("#menuOrder").addEventListener("click", function () {
+if (!lastOrder) { toast("还没有生成过订单"); return;}
+$("#orderText").textContent = lastOrder;
+$("#orderHint").textContent = "这是你最近一次生成的订单。";
+$("#fillInfoBtn").hidden = true;
+openSheet("orderSheet");
+});
+
+/* Profile form reflects into the profile card */
+["fName", "fPhone", "fAddr"].forEach(function (id) {
+$("#" + id).addEventListener("input", renderMe);
+});
+
+renderAll();
+</script>
+</body>
+</html>
