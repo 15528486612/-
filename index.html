@@ -6,6 +6,7 @@
 <meta name="color-scheme" content="light dark" />
 <link rel="icon" href="data:," />
 <title>社群订单</title>
+<script src="https://static.cloudbase.net/cloudbase-js-sdk/latest/cloudbase.full.js"></script>
 <style>
 :root {
 --bg: #f5f5f7;
@@ -438,6 +439,43 @@ background: var(--surface); border: 1.5px solid var(--line); border-radius: 16px
 .sheet > .primary-btn { margin-top: 12px;}
 .sheet > .primary-btn + .primary-btn { margin-top: 10px;}
 
+/* ---------- Backend banner / pay breakdown / order cards / admin ---------- */
+.backend-banner {
+margin: 12px 16px 0; padding: 10px 14px; border-radius: 12px;
+background: #fff4e5; color: #7a4a00; font-size: 13.5px; line-height: 1.5;
+border: 1px solid #f5d9a8; cursor: pointer;
+}
+.backend-banner.ok { background: var(--ok-bg); color: var(--ok); border-color: transparent; cursor: default;}
+@media (prefers-color-scheme: dark) {
+.backend-banner { background: #3a2c12; color: #ffd9a0; border-color: #6b4d1c;}
+.backend-banner.ok { background: var(--ok-bg); color: var(--ok); border-color: transparent;}
+}
+.pay-rows { text-align: left; margin-top: 10px;}
+.pay-rows .srow { display: flex; justify-content: space-between; gap: 12px; font-size: 13.5px; color: var(--sub); padding: 3px 0;}
+.pay-rows .srow span:last-child { color: var(--ink); font-weight: 600; white-space: nowrap;}
+.pay-rows .srow .fee-note { font-size: 11.5px; font-weight: 400;}
+.order-card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; margin-top: 10px; font-size: 13.5px;}
+.order-card .oc-head { display: flex; justify-content: space-between; gap: 8px; align-items: center;}
+.order-card .oc-no { font-weight: 700; font-size: 13px; word-break: break-all;}
+.status-pill { flex: none; font-size: 11.5px; font-weight: 700; padding: 3px 9px; border-radius: 999px; background: var(--chip); color: var(--sub); white-space: nowrap;}
+.status-pill.paid { background: var(--ok-bg); color: var(--ok);}
+.status-pill.preparing { background: rgba(0, 113, 227, 0.12); color: var(--accent);}
+.status-pill.cancelled { background: rgba(215, 0, 21, 0.1); color: var(--danger);}
+.status-pill.pending { background: #fff4e5; color: #7a4a00;}
+.order-card .oc-line { color: var(--sub); margin-top: 6px; line-height: 1.5;}
+.order-card .oc-total { display: flex; justify-content: space-between; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--line); font-weight: 700;}
+.order-card .oc-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px;}
+.mini-btn { border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 6px 12px; font-size: 13px; font-weight: 600; color: var(--accent);}
+.mini-btn.danger { color: var(--danger);}
+.mini-btn:disabled { color: var(--faint);}
+.admin-row { display: flex; gap: 10px; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--line); font-size: 14px;}
+.admin-row .ar-info { flex: 1; min-width: 0;}
+.admin-row .ar-sub { font-size: 12px; color: var(--sub); margin-top: 1px; line-height: 1.5;}
+.admin-row .ar-actions { display: flex; gap: 6px; flex: none; flex-wrap: wrap; justify-content: flex-end;}
+.admin-add { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap;}
+.admin-add input,.admin-add select { flex: 1; min-width: 90px; border: 1px solid var(--line); border-radius: 10px; padding: 9px 10px; font-size: 14px; background: var(--surface);}
+select.full { width: 100%; border: 0; outline: 0; background: transparent; font-size: 15px; padding: 2px 0;}
+
 /* ---------- Toast ---------- */
 .toast {
 position: fixed; left: 50%; bottom: calc(92px + env(safe-area-inset-bottom)); z-index: 60;
@@ -453,6 +491,7 @@ max-width: calc(100vw - 48px); overflow: hidden; text-overflow: ellipsis;
 <body>
 <div class="app">
 <main>
+<div class="backend-banner" id="backendBanner" hidden></div>
 <!-- ============ 商品 ============ -->
 <section class="view active" id="view-shop">
 <div class="shop-head">
@@ -535,7 +574,8 @@ max-width: calc(100vw - 48px); overflow: hidden; text-overflow: ellipsis;
 </div>
 </div>
 <div class="menu-card">
-<button class="menu-row" id="menuOrder"><span>我生成的订单</span><span class="chev">›</span></button>
+<button class="menu-row" id="menuOrder"><span>我的订单</span><span class="chev">›</span></button>
+<button class="menu-row" id="menuAdmin"><span>后台管理</span><span class="chev">›</span></button>
 <button class="menu-row" id="menuCart"><span>去购物车结算</span><span class="chev">›</span></button>
 <button class="menu-row danger" id="menuClear"><span>清空购物车</span><span></span></button>
 </div>
@@ -588,6 +628,7 @@ max-width: calc(100vw - 48px); overflow: hidden; text-overflow: ellipsis;
 <div class="d-spec" id="payCountLine">共 0 件商品</div>
 <div class="pay-amount-box">
 <div class="pay-amount-label">应付金额</div>
+<div class="pay-rows" id="payRows"></div>
 <div class="pay-amount" id="payAmount">¥0.00</div>
 <div class="pay-lock">
 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>
@@ -655,7 +696,7 @@ max-width: calc(100vw - 48px); overflow: hidden; text-overflow: ellipsis;
 <div class="srow"><span>支付状态</span><b class="paid-yes">已付款（模拟）</b></div>
 </div>
 <div class="order-text" id="doneOrderText"></div>
-<p class="hint">支付状态：已付款（模拟付款，未真实扣款）。这份订单是流程演示，接通微信 / 支付宝商户号后才会真实收款并发货。</p>
+<p class="hint">订单已保存到后台。支付状态：已付款（模拟付款，未真实扣款）。接通微信 / 支付宝商户号后才会真实收款。</p>
 <button class="primary-btn" id="copyDoneBtn">复制订单</button>
 <button class="primary-btn" id="doneFinishBtn" style="background:var(--chip);color:var(--accent)">完成</button>
 </div>
@@ -671,11 +712,69 @@ max-width: calc(100vw - 48px); overflow: hidden; text-overflow: ellipsis;
 <button class="primary-btn" id="fillInfoBtn" style="background:var(--chip);color:var(--accent)" hidden>先去填写收货信息</button>
 </div>
 
+<!-- ============ My orders sheet ============ -->
+<div class="sheet" id="myOrdersSheet" role="dialog" aria-modal="true" aria-label="我的订单">
+<div class="grab"></div>
+<h3 style="margin-top:2px">我的订单</h3>
+<div class="d-spec">按姓名 + 手机号查询你下过的订单（从后台实时查）</div>
+<div class="field"><label>姓名</label><input id="qName" type="text" placeholder="下单时填的姓名" /></div>
+<div class="field"><label>手机号</label><input id="qPhone" type="tel" placeholder="下单时填的手机号" /></div>
+<button class="primary-btn" id="queryOrdersBtn" style="margin-top:12px">查询我的订单</button>
+<div id="myOrdersList" style="margin-top:6px"></div>
+<div id="myOrdersLocal" style="margin-top:10px"></div>
+</div>
+
+<!-- ============ Admin sheet ============ -->
+<div class="sheet" id="adminSheet" role="dialog" aria-modal="true" aria-label="后台管理">
+<div class="grab"></div>
+<h3 style="margin-top:2px">后台管理</h3>
+<div id="adminLogin">
+<div class="d-spec">输入管理员口令，只保存在当前页面内存里，关闭页面即失效，不会写进任何地方。</div>
+<div class="field"><label>管理员口令</label><input id="adminTokenInput" type="password" placeholder="在云函数环境变量里设置的口令" autocomplete="off" /></div>
+<button class="primary-btn" id="adminLoginBtn" style="margin-top:12px">进入后台</button>
+<p class="hint">口令还没设置？先在 CloudBase 控制台给 getOrders、updateOrderStatus、adminProducts、adminCategories、updateSettings 这 5 个云函数的环境变量加上同一个口令。</p>
+</div>
+<div id="adminMain" hidden>
+<div class="chips" id="adminTabs" style="padding:12px 0 2px"></div>
+<div id="adminBody" style="margin-top:6px"></div>
+<button class="ghost-link-btn" id="adminLogoutBtn" type="button">退出后台（清除口令）</button>
+</div>
+</div>
+
+<!-- ============ Admin product form sheet ============ -->
+<div class="sheet" id="adminProdSheet" role="dialog" aria-modal="true" aria-label="商品编辑">
+<div class="grab"></div>
+<h3 style="margin-top:2px" id="adminProdTitle">新增商品</h3>
+<div class="field"><label>商品名</label><input id="apName" type="text" placeholder="如：MM 低糖蛋黄酥" /></div>
+<div class="field"><label>规格</label><input id="apSpec" type="text" placeholder="如：730g（14枚）" /></div>
+<div class="field"><label>价格（元）</label><input id="apPrice" type="number" step="0.01" min="0.01" placeholder="如：42.80" /></div>
+<div class="field"><label>一级分类</label><input id="apCatL1" type="text" value="休闲零食" /></div>
+<div class="field"><label>二级分类</label><select id="apCatL2" class="full"></select></div>
+<div class="field"><label>图片链接（可空，填图片 URL）</label><input id="apImg" type="text" placeholder="粘贴图片链接，留空则显示名称占位" /></div>
+<div class="field"><label>卖点（可空）</label><textarea id="apPoints" rows="2" placeholder="一句话卖点"></textarea></div>
+<div class="field"><label>状态</label><select id="apStatus" class="full"><option value="on_sale">上架</option><option value="off_sale">下架</option></select></div>
+<button class="primary-btn" id="adminProdSaveBtn" style="margin-top:14px">保存</button>
+<button class="primary-btn" id="adminProdDeleteBtn" style="background:var(--chip);color:var(--danger)" hidden>删除这个商品</button>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
-/* ================= Catalog: 休闲零食两个分类，图片暂时空着 ================= */
-var PRODUCTS = [
+/* ================= CloudBase 后端配置 ================= */
+// 环境 ID 不是密钥，前端可见；不要在这里放任何口令、数据库密码或商户密钥。
+var ENV_ID = 'shequn-dingdan-d7gz49yom485e1fbb';
+// 前端 SDK 通过 <head> 里的 cloudbase.full.js（CloudBase 官方 CDN，latest）加载，
+// 对应后端云函数用的 @cloudbase/js-sdk 3.11.0。
+// 认证方式：匿名登录（app.auth.signInAnonymously）。它要求在 CloudBase 控制台里开启
+// 「身份认证 → 登录方式 → 匿名登录」；如果没开，登录会失败，页面会提示开启路径。
+// init 的 accessKey（Publishable Key）是可选的，本页没传——匿名登录已够用；
+// 只有当匿名登录被关掉、又不想开它时，才需要去控制台「API Key 配置」生成 Publishable Key
+// 并在 init 里加上 accessKey。
+
+/* ================= Fallback catalog: 后端连不上时才用的商品快照 ================= */
+// 2026-11-09 从数据库种子数据抄的 30 款（山姆价）。后端正常时不用它，页面显示的是实时拉取的数据。
+// 注意：快照里的 id 是 n1/g1 这种旧编号，只能用来离线浏览和生成订单文字，不能拿去调 createOrder。
+var FALLBACK_PRODUCTS = [
 /* ---- 休闲零食 · 新品上市（14款，山姆价） ---- */
 { id: "n1", name: "MM 低糖蛋黄酥", cat: "新品上市", price: 42.80, spec: "730g（14枚）", img: "", tag: "新品", desc: "添加6%安佳黄油。"},
 { id: "n2", name: "MM苹果干", cat: "新品上市", price: 56.90, spec: "650g", img: "", tag: "新品", desc: "一块苹果干≈半个苹果。"},
@@ -709,12 +808,137 @@ var PRODUCTS = [
 { id: "g15", name: "玛氏箭牌 木糖醇0糖脆皮软心口香糖", cat: "低糖/低GI", price: 69.90, spec: "500g", img: "", tag: "", desc: "低糖/低GI分类商品 · 山姆全国配。"},
 { id: "g16", name: "奥赛 高膳食纤维山楂棒（果糕类蜜饯）", cat: "低糖/低GI", price: 49.90, spec: "750g", img: "", tag: "", desc: "低糖/低GI分类商品 · 山姆全国配。"}
 ];
-var CATS = ["全部", "新品上市", "低糖/低GI"];
+var FALLBACK_CATS = ["全部", "新品上市", "低糖/低GI"];
+
+/* ================= 后端连接层 ================= */
+var Backend = { ready: false, authed: false, error: '' };
+var PRODUCTS = [];
+var CATS = ["全部"];
+var CAT_TREE = [];
+var catalogLoading = true;
+
+var DEFAULT_FEE = { mode: 'percent', rate: 0.08, minCents: 500, maxCents: 2500 };
+
+function esc(s) {
+return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+function getAuth(app) {
+if (!app) return null;
+// @cloudbase/js-sdk 3.11.0 里 app.auth 既是方法又有 Auth 方法（见其类型声明），
+// 官方 v3 文档写 app.auth.signInAnonymously()，两种写法都兼容。
+if (app.auth && typeof app.auth.signInAnonymously === 'function') return app.auth;
+if (typeof app.auth === 'function') { try { return app.auth(); } catch (e) { return null; } }
+return null;
+}
+function showBackendBanner(html, ok) {
+var b = document.getElementById('backendBanner');
+b.innerHTML = html; b.hidden = false; b.classList.toggle('ok', !!ok);
+}
+function hideBackendBanner() {
+document.getElementById('backendBanner').hidden = true;
+}
+document.getElementById('backendBanner').addEventListener('click', function () {
+if (!Backend.ready) { toast('正在重试连接…'); loadCatalog(); }
+});
+async function initBackend() {
+if (!window.cloudbase) {
+showBackendBanner('SDK 加载失败：请检查网络后刷新页面。');
+return false;
+}
+var app;
+try {
+app = window.cloudbase.init({ env: ENV_ID });
+} catch (e) {
+showBackendBanner('初始化失败：' + esc(e && e.message ? e.message : '未知错误'));
+return false;
+}
+window.__cbApp = app;
+try {
+var auth = getAuth(app);
+if (!auth) throw new Error('当前 SDK 版本不支持匿名登录');
+var res = await auth.signInAnonymously();
+if (res && res.error) throw new Error((res.error && (res.error.message || res.error.code)) || '匿名登录失败');
+Backend.ready = true;
+Backend.authed = true;
+return true;
+} catch (e) {
+Backend.ready = false;
+Backend.error = (e && e.message) ? e.message : '登录失败';
+showBackendBanner('后端连接失败：匿名登录未成功（' + esc(Backend.error) + '）。请在 CloudBase 控制台开启匿名登录：身份认证 → 登录方式 → 匿名登录，然后刷新页面重试。');
+return false;
+}
+}
+// 调云函数：返回云函数自己的 { code, message, data }；网关/网络错误时抛错，调用方 catch。
+// v3 的 callFunction 成功时把云函数返回值放在 res.result 里，失败默认抛错。
+async function callFn(name, data) {
+if (!window.__cbApp || !Backend.ready) throw new Error('后端未连接');
+var res = await window.__cbApp.callFunction({ name: name, data: data || {} });
+var out = (res && res.result !== undefined) ? res.result : res;
+if (!out || typeof out !== 'object') throw new Error('云函数返回格式异常');
+return out;
+}
+// 服务费：与服务端 calcServiceFeeCents 同一规则（前端只做展示，真正计费以服务端重算为准）。
+function calcServiceFeeCents(subtotalCents, fee) {
+fee = fee || DEFAULT_FEE;
+if (fee.mode === 'fixed_per_order') return Math.max(0, Number(fee.amountCents) || 0);
+var rate = Number(fee.rate);
+if (!isFinite(rate) || rate < 0) return Number(fee.minCents) || 0;
+var f = Math.round(subtotalCents * rate);
+var min = Number.isInteger(fee.minCents) ? fee.minCents : 0;
+var max = Number.isInteger(fee.maxCents) ? fee.maxCents : Number.MAX_SAFE_INTEGER;
+if (f < min) f = min;
+if (f > max) f = max;
+return f;
+}
+function feeRuleText(fee) {
+fee = fee || DEFAULT_FEE;
+if (fee.mode === 'fixed_per_order') return '每单 ¥' + (Number(fee.amountCents || 0) / 100).toFixed(2);
+return '按订单金额的 ' + (Math.round(Number(fee.rate || 0) * 100)) + '% 收，最低 ¥' + (Number(fee.minCents || 0) / 100) + '，最高 ¥' + (Number(fee.maxCents || 0) / 100);
+}
+function mapServerProduct(r) {
+return {
+id: r._id, name: r.name, spec: r.spec || '',
+price: Number(r.priceYuan) || 0, priceCents: r.priceCents || 0,
+cat: r.categoryL2 || '', catId: r.categoryId || '', catL1: r.categoryL1 || '',
+img: r.imageUrl || '', tag: (r.categoryL2 === '新品上市') ? '新品' : '',
+desc: r.sellingPoints || ''
+};
+}
+async function loadCatalog() {
+catalogLoading = true;
+renderGrid();
+if (!Backend.ready) { useFallback('后端未连接'); return; }
+try {
+var catsRes = await callFn('getCategories', {});
+var prodsRes = await callFn('getProducts', { page: 1, pageSize: 100 });
+if (!catsRes || catsRes.code !== 0) throw new Error((catsRes && catsRes.message) || '分类加载失败');
+if (!prodsRes || prodsRes.code !== 0) throw new Error((prodsRes && prodsRes.message) || '商品加载失败');
+CAT_TREE = (catsRes.data && catsRes.data.list) || [];
+var l2 = [];
+CAT_TREE.forEach(function (l1) { (l1.children || []).forEach(function (c) { l2.push(c.name); }); });
+CATS = ['全部'].concat(l2);
+PRODUCTS = ((prodsRes.data && prodsRes.data.list) || []).map(mapServerProduct);
+catalogLoading = false;
+hideBackendBanner();
+} catch (e) {
+useFallback('加载失败：' + (e && e.message ? e.message : '网络异常'));
+return;
+}
+renderAll();
+}
+function useFallback(reason) {
+PRODUCTS = FALLBACK_PRODUCTS.slice();
+CATS = FALLBACK_CATS.slice();
+CAT_TREE = [];
+catalogLoading = false;
+showBackendBanner('后端暂时连不上（' + esc(reason) + '）。当前显示的是商品快照，下单只会生成订单文字，不会保存到后台。点我重试。');
+renderAll();
+}
 
 /* Product visual: real photo when present, name placeholder while images are empty */
 function visualHTML(p) {
-if (p.img) return '<img src="' + p.img + '" alt="' + p.name + '" loading="lazy" />';
-return '<div class="ph" aria-hidden="true"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="4.5" width="17" height="15" rx="2.5"/><circle cx="9" cy="10" r="1.6"/><path d="M4 18l5-5 3.5 3.5L16 13l4 4"/></svg><span class="ph-name">' + p.name + '</span><small>暂无图片</small></div>';
+if (p.img) return '<img src="' + esc(p.img) + '" alt="' + esc(p.name) + '" loading="lazy" />';
+return '<div class="ph" aria-hidden="true"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="4.5" width="17" height="15" rx="2.5"/><circle cx="9" cy="10" r="1.6"/><path d="M4 18l5-5 3.5 3.5L16 13l4 4"/></svg><span class="ph-name">' + esc(p.name) + '</span><small>暂无图片</small></div>';
 }
 
 /* ================= State (in-memory only) ================= */
@@ -724,22 +948,29 @@ var keyword = "";
 var detailId = null;
 var lastOrder = "";
 var payMethod = "wechat"; // "wechat" | "alipay"
-var pending = null; // { no, total, count, kinds } locked at checkout time
-var lastPaid = null; // { no, method, total }
-var payTimer = null;
+// pending: { subtotalCents, feeCents, totalCents, count, kinds, feeCfg, methods, feeEstimated, localNo }
+var pending = null;
+var lastPaid = null; // { no, method, totalCents, subtotalCents, feeCents }
+var paying = false;
 
-var $ = function (s) { return document.querySelector(s);};
-function money(n) { return "¥" + n.toFixed(2);}
-function byId(id) { for (var i = 0; i < PRODUCTS.length; i++) if (PRODUCTS[i].id === id) return PRODUCTS[i]; return null;}
-function cartCount() { var n = 0; for (var k in cart) n += cart[k]; return n;}
-function cartKinds() { var n = 0; for (var k in cart) if (cart[k] > 0) n++; return n;}
-function cartTotal() { var t = 0; for (var k in cart) t += byId(k).price * cart[k]; return t;}
+var $ = function (s) { return document.querySelector(s); };
+function money(n) { return "¥" + n.toFixed(2); }
+function moneyC(c) { return "¥" + (c / 100).toFixed(2); }
+function byId(id) { for (var i = 0; i < PRODUCTS.length; i++) if (PRODUCTS[i].id === id) return PRODUCTS[i]; return null; }
+function cartCount() { var n = 0; for (var k in cart) n += cart[k]; return n; }
+function cartKinds() { var n = 0; for (var k in cart) if (cart[k] > 0) n++; return n; }
+function cartTotal() { var t = 0; for (var k in cart) { var p = byId(k); if (p) t += p.price * cart[k]; } return t; }
+function cartSubtotalCents() {
+var t = 0;
+for (var k in cart) { var p = byId(k); if (p) t += (p.priceCents || Math.round(p.price * 100)) * cart[k]; }
+return t;
+}
 
 var toastTimer = null;
 function toast(msg) {
 var el = $("#toast"); el.textContent = msg; el.classList.add("show");
 clearTimeout(toastTimer);
-toastTimer = setTimeout(function () { el.classList.remove("show");}, 1800);
+toastTimer = setTimeout(function () { el.classList.remove("show"); }, 1800);
 }
 
 /* ================= Stepper / add control ================= */
@@ -774,7 +1005,7 @@ b.classList.remove("bump"); void b.offsetWidth; b.classList.add("bump");
 
 /* ================= Render: shop ================= */
 function matches(p) {
-if (filterCat!== "全部" && p.cat!== filterCat) return false;
+if (filterCat !== "全部" && p.cat !== filterCat) return false;
 if (keyword) {
 var hay = (p.name + " " + p.cat + " " + p.spec).toLowerCase();
 if (hay.indexOf(keyword.toLowerCase()) === -1) return false;
@@ -783,7 +1014,7 @@ return true;
 }
 function renderChips() {
 $("#chips").innerHTML = CATS.map(function (c) {
-return '<button class="chip' + (c === filterCat? " on": "") + '" data-chip="' + c + '">' + c + "</button>";
+return '<button class="chip' + (c === filterCat ? " on" : "") + '" data-chip="' + esc(c) + '">' + esc(c) + "</button>";
 }).join("");
 }
 function renderGrid() {
@@ -791,15 +1022,32 @@ var list = PRODUCTS.filter(matches);
 $("#grid").innerHTML = list.map(function (p) {
 return '<article class="card" data-open="' + p.id + '">'
 + '<div class="card-img">' + visualHTML(p)
-+ (p.tag? '<span class="tag' + (p.tag === "热卖"? " hot": "") + '">' + p.tag + "</span>": "")
++ (p.tag ? '<span class="tag' + (p.tag === "热卖" ? " hot" : "") + '">' + esc(p.tag) + "</span>" : "")
 + "</div>"
-+ '<div class="card-name">' + p.name + "</div>"
-+ '<div class="card-spec">' + p.spec + " · " + p.cat + "</div>"
++ '<div class="card-name">' + esc(p.name) + "</div>"
++ '<div class="card-spec">' + esc(p.spec) + " · " + esc(p.cat) + "</div>"
 + '<div class="card-foot"><span class="price">' + money(p.price) + "</span>" + controlHTML(p) + "</div>"
 + "</article>";
 }).join("");
-$("#shopEmpty").hidden = list.length > 0;
-$("#grid").style.display = list.length? "": "none";
+var empty = $("#shopEmpty");
+var emptyP = empty.querySelector("p");
+if (list.length === 0) {
+empty.hidden = false;
+$("#grid").style.display = "none";
+if (catalogLoading) {
+emptyP.textContent = "正在加载商品…";
+$("#emptyReset").hidden = true;
+} else if (keyword) {
+emptyP.textContent = "没有找到相关商品，换个关键词试试";
+$("#emptyReset").hidden = false;
+} else {
+emptyP.textContent = "暂无商品";
+$("#emptyReset").hidden = true;
+}
+} else {
+empty.hidden = true;
+$("#grid").style.display = "";
+}
 var rl = $("#resultLine");
 if (keyword) {
 rl.textContent = "搜索“" + keyword + "” · 共 " + list.length + " 件商品";
@@ -810,24 +1058,29 @@ rl.classList.add("show");
 /* ================= Render: category ================= */
 function renderCats() {
 $("#catRail").innerHTML = CATS.map(function (c) {
-var n = c === "全部"? PRODUCTS.length: PRODUCTS.filter(function (p) { return p.cat === c;}).length;
-return '<button data-cat="' + c + '"' + (c === filterCat? ' class="on"': "") + ">" + c
+var n = c === "全部" ? PRODUCTS.length : PRODUCTS.filter(function (p) { return p.cat === c; }).length;
+return '<button data-cat="' + esc(c) + '"' + (c === filterCat ? ' class="on"' : "") + ">" + esc(c)
 + '<span class="cnt">' + n + " 件</span></button>";
 }).join("");
-var list = PRODUCTS.filter(function (p) { return filterCat === "全部" || p.cat === filterCat;});
+if (catalogLoading) {
+$("#catNote").textContent = "加载中…";
+$("#catMain").innerHTML = '<div class="empty"><p>正在加载分类…</p></div>';
+return;
+}
+var list = PRODUCTS.filter(function (p) { return filterCat === "全部" || p.cat === filterCat; });
 $("#catNote").textContent = filterCat + " · " + list.length + " 件";
 $("#catMain").innerHTML = list.map(function (p) {
 return '<div class="row-item" data-open="' + p.id + '">'
 + visualHTML(p)
-+ '<div class="row-info"><div class="row-name">' + p.name + '</div>'
-+ '<div class="row-spec">' + p.spec + "</div>"
++ '<div class="row-info"><div class="row-name">' + esc(p.name) + '</div>'
++ '<div class="row-spec">' + esc(p.spec) + "</div>"
 + '<div class="row-foot"><span class="price">' + money(p.price) + "</span>" + controlHTML(p) + "</div></div></div>";
 }).join("") || '<div class="empty"><p>这个分类暂时没有商品</p></div>';
 }
 
 /* ================= Render: cart ================= */
 function renderCart() {
-var ids = Object.keys(cart).filter(function (k) { return cart[k] > 0;});
+var ids = Object.keys(cart).filter(function (k) { return cart[k] > 0; });
 $("#cartEmpty").hidden = ids.length > 0;
 $("#cartSummary").hidden = ids.length === 0;
 $("#clearCartBtn").hidden = ids.length === 0;
@@ -835,9 +1088,9 @@ $("#cartList").innerHTML = ids.map(function (id) {
 var p = byId(id), q = cart[id];
 return '<div class="cart-item">'
 + visualHTML(p)
-+ '<div class="cart-info"><div class="cart-top"><div><div class="cart-name">' + p.name + '</div>'
-+ '<div class="cart-spec">' + p.spec + " · " + money(p.price) + "/份</div></div>"
-+ '<button class="del-btn" data-del="' + id + '" aria-label="删除' + p.name + '">'
++ '<div class="cart-info"><div class="cart-top"><div><div class="cart-name">' + esc(p.name) + '</div>'
++ '<div class="cart-spec">' + esc(p.spec) + " · " + money(p.price) + "/份</div></div>"
++ '<button class="del-btn" data-del="' + id + '" aria-label="删除' + esc(p.name) + '">'
 + '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 7h16M9 7V5a1.5 1.5 0 0 1 1.5-1.5h3A1.5 1.5 0 0 1 15 5v2M6.5 7l1 13h9l1-13"/></svg>'
 + "</button></div>"
 + '<div class="cart-foot"><span class="stepper">'
@@ -872,7 +1125,7 @@ if (detailId) renderDetailStepper();
 
 /* ================= Views ================= */
 function switchView(name) {
-document.querySelectorAll(".view").forEach(function (v) { v.classList.remove("active");});
+document.querySelectorAll(".view").forEach(function (v) { v.classList.remove("active"); });
 $("#view-" + name).classList.add("active");
 document.querySelectorAll(".tab").forEach(function (t) {
 t.classList.toggle("on", t.dataset.view === name);
@@ -880,10 +1133,10 @@ t.classList.toggle("on", t.dataset.view === name);
 window.scrollTo(0, 0);
 }
 document.querySelectorAll(".tab").forEach(function (t) {
-t.addEventListener("click", function () { switchView(t.dataset.view);});
+t.addEventListener("click", function () { switchView(t.dataset.view); });
 });
-$("#goShopBtn").addEventListener("click", function () { switchView("shop");});
-$("#menuCart").addEventListener("click", function () { switchView("cart");});
+$("#goShopBtn").addEventListener("click", function () { switchView("shop"); });
+$("#menuCart").addEventListener("click", function () { switchView("cart"); });
 
 /* ================= Search & chips ================= */
 var searchInput = $("#searchInput");
@@ -913,13 +1166,13 @@ filterCat = b.dataset.cat; renderCats(); renderChips(); renderGrid();
 /* ================= Cart actions (event delegation) ================= */
 document.addEventListener("click", function (e) {
 var add = e.target.closest("[data-add]");
-if (add) { e.stopPropagation(); setQty(add.dataset.add, 1); toast("已加入购物车：" + byId(add.dataset.add).name); return;}
+if (add) { e.stopPropagation(); setQty(add.dataset.add, 1); toast("已加入购物车：" + byId(add.dataset.add).name); return; }
 var inc = e.target.closest("[data-inc]");
-if (inc) { e.stopPropagation(); setQty(inc.dataset.inc, (cart[inc.dataset.inc] || 0) + 1, true); return;}
+if (inc) { e.stopPropagation(); setQty(inc.dataset.inc, (cart[inc.dataset.inc] || 0) + 1, true); return; }
 var dec = e.target.closest("[data-dec]");
-if (dec) { e.stopPropagation(); setQty(dec.dataset.dec, (cart[dec.dataset.dec] || 0) - 1, true); return;}
+if (dec) { e.stopPropagation(); setQty(dec.dataset.dec, (cart[dec.dataset.dec] || 0) - 1, true); return; }
 var del = e.target.closest("[data-del]");
-if (del) { e.stopPropagation(); var nm = byId(del.dataset.del).name; setQty(del.dataset.del, 0, true); toast("已移除：" + nm); return;}
+if (del) { e.stopPropagation(); var nm = byId(del.dataset.del).name; setQty(del.dataset.del, 0, true); toast("已移除：" + nm); return; }
 var open = e.target.closest("[data-open]");
 if (open) openDetail(open.dataset.open);
 });
@@ -928,9 +1181,9 @@ function clearCart(silent) {
 cart = {}; renderAll();
 if (!silent) toast("购物车已清空");
 }
-$("#clearCartBtn").addEventListener("click", function () { clearCart(false);});
+$("#clearCartBtn").addEventListener("click", function () { clearCart(false); });
 $("#menuClear").addEventListener("click", function () {
-if (cartCount() === 0) { toast("购物车已经是空的"); return;}
+if (cartCount() === 0) { toast("购物车已经是空的"); return; }
 clearCart(false);
 });
 
@@ -941,15 +1194,15 @@ scrim.classList.add("show");
 $("#" + id).classList.add("show");
 }
 function showSheetOnly(id) {
-document.querySelectorAll(".sheet").forEach(function (s) { s.classList.remove("show");});
+document.querySelectorAll(".sheet").forEach(function (s) { s.classList.remove("show"); });
 scrim.classList.add("show");
 $("#" + id).classList.add("show");
 detailId = null;
 }
 function closeSheets() {
-if (payTimer) { clearTimeout(payTimer); payTimer = null; resetSimPayBtn();}
+resetSimPayBtn();
 scrim.classList.remove("show");
-document.querySelectorAll(".sheet").forEach(function (s) { s.classList.remove("show");});
+document.querySelectorAll(".sheet").forEach(function (s) { s.classList.remove("show"); });
 detailId = null;
 }
 scrim.addEventListener("click", closeSheets);
@@ -960,7 +1213,7 @@ var p = byId(id);
 $("#dImgWrap").innerHTML = visualHTML(p);
 $("#dName").textContent = p.name;
 $("#dSpec").textContent = p.spec + " · " + p.cat;
-$("#dDesc").textContent = p.desc;
+$("#dDesc").textContent = p.desc || "";
 $("#dPrice").textContent = money(p.price);
 renderDetailStepper();
 openSheet("detailSheet");
@@ -969,7 +1222,7 @@ function renderDetailStepper() {
 if (!detailId) return;
 $("#dStepper").innerHTML = controlHTMLLg(byId(detailId));
 var q = cart[detailId] || 0;
-$("#dAddBtn").textContent = q > 0? "再来一份": "加入购物车";
+$("#dAddBtn").textContent = q > 0 ? "再来一份" : "加入购物车";
 }
 $("#dAddBtn").addEventListener("click", function () {
 if (!detailId) return;
@@ -977,26 +1230,37 @@ setQty(detailId, (cart[detailId] || 0) + 1);
 toast("已加入购物车：" + byId(detailId).name);
 });
 
-/* ================= Order generation + simulated payment ================= */
-function methodName(m) { return m === "alipay" ? "支付宝" : "微信支付";}
-function methodClass(m) { return m === "alipay" ? "ali" : "wx";}
+/* ================= Order generation + simulated payment (backend) ================= */
+function methodName(m) { return m === "alipay"? "支付宝": "微信支付";}
+function methodClass(m) { return m === "alipay"? "ali": "wx";}
 function genOrderNo() {
 var d = new Date();
-function pad(n) { return (n < 10 ? "0" : "") + n;}
+function pad(n) { return (n < 10? "0": "") + n;}
 var stamp = "" + d.getFullYear() + pad(d.getMonth() + 1) + pad(d.getDate()) + pad(d.getHours()) + pad(d.getMinutes()) + pad(d.getSeconds());
 var rand = Math.floor(1000 + Math.random() * 9000);
 return "SQ" + stamp + rand;
 }
 function buildOrderText(payInfo) {
-var lines = ["【社群订单】"];
-if (pending && pending.no) lines.push("订单号：" + pending.no);
+var lines = [""];
+var no = (payInfo && payInfo.orderNo) || (pending && pending.localNo) || genOrderNo();
+lines.push("订单号：" + no);
 Object.keys(cart).filter(function (k) { return cart[k] > 0;}).forEach(function (id) {
 var p = byId(id);
 lines.push("· " + p.name + "（" + p.spec + "）× " + cart[id] + " " + money(p.price * cart[id]));
 });
-lines.push("合计：" + money(cartTotal()) + "（共 " + cartCount() + " 件）");
+var sub, fee, tot, cnt;
+if (payInfo && payInfo.totalCents!= null) {
+sub = payInfo.subtotalCents; fee = payInfo.feeCents; tot = payInfo.totalCents; cnt = payInfo.count;
+} else if (pending) {
+sub = pending.subtotalCents; fee = pending.feeCents; tot = pending.totalCents; cnt = pending.count;
+} else {
+sub = cartSubtotalCents(); fee = calcServiceFeeCents(sub, DEFAULT_FEE); tot = sub + fee; cnt = cartCount();
+}
+lines.push("商品小计：" + moneyC(sub));
+lines.push("服务费：" + moneyC(fee));
+lines.push("合计：" + moneyC(tot) + "（共 " + cnt + " 件）");
 if (payInfo && payInfo.paid) {
-lines.push("支付状态：已付款（模拟付款，未真实扣款 · " + methodName(payInfo.method) + " " + money(payInfo.total) + "）");
+lines.push("支付状态：已付款（模拟付款，未真实扣款 · " + methodName(payInfo.method) + " " + moneyC(tot) + "）");
 } else if (pending) {
 lines.push("支付状态：待付款");
 }
@@ -1022,12 +1286,16 @@ $("#fillInfoBtn").hidden = ok;
 }
 function renderPaySheet() {
 if (!pending) return;
-$("#payAmount").textContent = money(pending.total);
-$("#payOrderNo").textContent = pending.no;
+$("#payRows").innerHTML =
+'<div class="srow"><span>商品小计</span><span>' + moneyC(pending.subtotalCents) + '</span></div>'
++ '<div class="srow"><span>服务费 <span class="fee-note">' + esc(feeRuleText(pending.feeCfg)) + '</span></span><span>' + moneyC(pending.feeCents) + '</span></div>'
++ (pending.feeEstimated? '<div class="srow"><span>提示</span><span>服务费配置未读取到，按默认规则估算</span></div>': '');
+$("#payAmount").textContent = moneyC(pending.totalCents);
+$("#payOrderNo").textContent = "提交后生成";
 $("#payCountLine").textContent = "共 " + pending.kinds + " 种 · " + pending.count + " 件商品";
 $("#payItems").innerHTML = Object.keys(cart).filter(function (k) { return cart[k] > 0;}).map(function (id) {
 var p = byId(id);
-return '<div class="pay-item"><div class="pi-name">' + p.name + "<span>" + p.spec + " × " + cart[id] + "</span></div>"
+return '<div class="pay-item"><div class="pi-name">' + esc(p.name) + "<span>" + esc(p.spec) + " × " + cart[id] + "</span></div>"
 + '<div class="pi-amt">' + money(p.price * cart[id]) + "</div></div>";
 }).join("");
 var ok = hasInfo();
@@ -1035,19 +1303,21 @@ $("#payInfoHint").textContent = ok
 ? "订单里会带上你的收货信息，付款成功后把订单发给群主即可。"
 : "收货信息还没填全，群主可能联系不上你——建议先去「我的」里补上姓名、手机号和地址。";
 $("#payFillInfoBtn").hidden = ok;
+if (pending.methods.indexOf(payMethod) === -1) payMethod = pending.methods[0] || "wechat";
 document.querySelectorAll(".pay-method").forEach(function (b) {
+b.style.display = (pending.methods.indexOf(b.dataset.method) === -1)? "none": "";
 b.classList.toggle("on", b.dataset.method === payMethod);
 });
 var btn = $("#confirmPayBtn");
 btn.className = "primary-btn " + methodClass(payMethod);
-btn.textContent = methodName(payMethod) + " " + money(pending.total);
+btn.textContent = methodName(payMethod) + " " + moneyC(pending.totalCents);
 }
 function renderSimSheet() {
 if (!pending) return;
 $("#simHead").className = "sim-head " + methodClass(payMethod);
-$("#simAmount").textContent = money(pending.total);
+$("#simAmount").textContent = moneyC(pending.totalCents);
 $("#simMethodName").textContent = methodName(payMethod);
-$("#simOrderNo").textContent = pending.no;
+$("#simOrderNo").textContent = "提交后生成";
 $("#simGoodsLine").textContent = pending.kinds + " 种商品 · 共 " + pending.count + " 件";
 resetSimPayBtn();
 }
@@ -1056,15 +1326,35 @@ var b = $("#simPayBtn");
 if (!b) return;
 b.disabled = false;
 b.className = "primary-btn " + methodClass(payMethod);
-b.textContent = pending ? ("确认支付 " + money(pending.total)) : "确认支付";
+b.textContent = pending? ("确认支付 " + moneyC(pending.totalCents)): "确认支付";
 }
-$("#checkoutBtn").addEventListener("click", function () {
+// 点“去结算”：先实时读服务费配置再算展示金额；真正计费以 createOrder 服务端重算为准。
+async function openCheckout() {
 if (cartCount() === 0) return;
-pending = { no: genOrderNo(), total: cartTotal(), count: cartCount(), kinds: cartKinds()};
+var feeCfg = DEFAULT_FEE, methods = ["wechat", "alipay"], feeEstimated = false;
+if (Backend.ready) {
+try {
+var s = await callFn("getSettings", {});
+if (s && s.code === 0 && s.data) {
+if (s.data.serviceFee) feeCfg = s.data.serviceFee;
+if (s.data.payment && s.data.payment.methods && s.data.payment.methods.length) methods = s.data.payment.methods;
+if (s.data.payment && s.data.payment.defaultMethod) payMethod = s.data.payment.defaultMethod;
+} else { feeEstimated = true;}
+} catch (e) { feeEstimated = true;}
+} else { feeEstimated = true;}
+var sub = cartSubtotalCents();
+var fee = calcServiceFeeCents(sub, feeCfg);
+pending = {
+subtotalCents: sub, feeCents: fee, totalCents: sub + fee,
+count: cartCount(), kinds: cartKinds(),
+feeCfg: feeCfg, methods: methods, feeEstimated: feeEstimated,
+localNo: genOrderNo()
+};
 lastPaid = null;
 renderPaySheet();
 showSheetOnly("paySheet");
-});
+}
+$("#checkoutBtn").addEventListener("click", function () { openCheckout();});
 $("#payMethods").addEventListener("click", function (e) {
 var b = e.target.closest("[data-method]"); if (!b) return;
 payMethod = b.dataset.method;
@@ -1076,36 +1366,82 @@ renderSimSheet();
 showSheetOnly("paySimSheet");
 });
 $("#simCancelBtn").addEventListener("click", function () {
-if (payTimer) { clearTimeout(payTimer); payTimer = null;}
 resetSimPayBtn();
 renderPaySheet();
 showSheetOnly("paySheet");
 toast("已取消支付，订单还没付款");
 });
-$("#simPayBtn").addEventListener("click", function () {
-if (!pending || payTimer) return;
+// 点“确认支付”：先调 createOrder 真正下单（只传商品 id+数量和收货人信息，金额由服务端重算），
+// 成功后再显示模拟付款成功页；失败则走订单文字兜底，购物车不清空。
+async function doCreateOrder() {
+if (!pending || paying) return;
+if (!hasInfo()) { toast("请先填写姓名、手机号和地址"); goFillInfo(); return;}
+paying = true;
 var b = $("#simPayBtn");
 b.disabled = true;
-b.innerHTML = '<span class="spinner" aria-hidden="true"></span>支付处理中…';
-payTimer = setTimeout(function () {
-payTimer = null;
-lastPaid = { no: pending.no, method: payMethod, total: pending.total};
-lastOrder = buildOrderText({ paid: true, method: payMethod, total: pending.total});
-$("#doneAmount").textContent = money(lastPaid.total);
-$("#doneOrderNo").textContent = lastPaid.no;
-$("#doneMethod").textContent = methodName(lastPaid.method);
+b.innerHTML = '<span class="spinner" aria-hidden="true"></span>正在提交订单…';
+try {
+if (!Backend.ready) throw new Error("后端未连接");
+var items = Object.keys(cart).filter(function (k) { return cart[k] > 0;}).map(function (id) {
+return { productId: id, qty: cart[id]};
+});
+var r = await callFn("createOrder", {
+buyerName: $("#fName").value.trim(),
+buyerPhone: $("#fPhone").value.trim(),
+buyerAddress: $("#fAddr").value.trim(),
+items: items,
+payMethod: payMethod
+});
+if (r && r.code === 0) {
+var d = r.data;
+lastPaid = { no: d.orderNo, method: payMethod, totalCents: d.totalCents, subtotalCents: d.subtotalCents, feeCents: d.serviceFeeCents};
+lastOrder = buildOrderText({ paid: true, method: payMethod, orderNo: d.orderNo, subtotalCents: d.subtotalCents, feeCents: d.serviceFeeCents, totalCents: d.totalCents, count: pending.count});
+if (d.totalCents!== pending.totalCents) toast("商品价格有变动，已按最新价格结算");
+$("#doneAmount").textContent = moneyC(d.totalCents);
+$("#doneOrderNo").textContent = d.orderNo;
+$("#doneMethod").textContent = methodName(payMethod);
 $("#doneOrderText").textContent = lastOrder;
 cart = {};
 renderAll();
+paying = false;
 resetSimPayBtn();
 showSheetOnly("payDoneSheet");
-toast("模拟支付成功");
-}, 1100);
-});
+toast("下单成功，订单已保存");
+return;
+}
+if (r && r.code === "PRODUCT_OFF_SALE") {
+toast("有商品已下架，请移除后重新下单");
+loadCatalog();
+closeSheets();
+paying = false;
+resetSimPayBtn();
+return;
+}
+if (r && r.code === "PRODUCT_NOT_FOUND") {
+toast("有商品不存在，请刷新页面重试");
+loadCatalog();
+closeSheets();
+paying = false;
+resetSimPayBtn();
+return;
+}
+// 其他业务失败：走订单文字兜底，购物车不清空。
+lastOrder = buildOrderText(null);
+fillOrderSheet("下单失败（" + ((r && r.message) || "请重试") + "），这单没有保存到后台——可先复制订单文字发给群主。");
+showSheetOnly("orderSheet");
+} catch (e) {
+lastOrder = buildOrderText(null);
+fillOrderSheet("后端暂时连不上，这单没有保存到后台——请复制订单文字发给群主，网络恢复后请重新下单。");
+showSheetOnly("orderSheet");
+}
+paying = false;
+resetSimPayBtn();
+}
+$("#simPayBtn").addEventListener("click", function () { doCreateOrder();});
 $("#payCopyOnlyBtn").addEventListener("click", function () {
 if (!pending) return;
 lastOrder = buildOrderText(null);
-fillOrderSheet("这是待付款订单文字，复制发给群主后请再按约定完成付款。");
+fillOrderSheet("这是待付款订单文字，复制发给群主后请再按约定完成付款（仅生成文字，不会保存到后台）。");
 showSheetOnly("orderSheet");
 });
 function goFillInfo() { closeSheets(); switchView("me"); $("#fName").focus();}
@@ -1128,12 +1464,345 @@ document.body.appendChild(ta); ta.select();
 try { document.execCommand("copy");} catch (err) {}
 document.body.removeChild(ta);
 }
-$("#menuOrder").addEventListener("click", function () {
-if (!lastOrder) { toast("还没有生成过订单"); return;}
+
+/* ================= 我的订单（调 getOrders 自查） ================= */
+function statusLabel(s) {
+return { paid_simulated: "已付款（模拟）", paid: "已付款", preparing: "备货中", completed: "已完成", cancelled: "已取消", pending_payment: "待付款", pending: "待付款"}[s] || s;
+}
+function statusPillClass(s) {
+if (s === "paid_simulated" || s === "paid") return "paid";
+if (s === "preparing") return "preparing";
+if (s === "cancelled") return "cancelled";
+if (s === "pending_payment" || s === "pending") return "pending";
+return "";
+}
+function orderCardHTML(o, admin) {
+var items = (o.items || []).map(function (it) { return esc(it.name) + " × " + it.qty;}).join("、");
+var btns = "";
+if (admin) {
+if (o.status === "paid_simulated" || o.status === "paid") btns += '<button class="mini-btn" data-act="order-status" data-no="' + esc(o.orderNo) + '" data-to="preparing">开始备货</button>';
+if (o.status === "preparing") btns += '<button class="mini-btn" data-act="order-status" data-no="' + esc(o.orderNo) + '" data-to="completed">标记完成</button>';
+if (o.status === "pending_payment") btns += '<button class="mini-btn" data-act="order-status" data-no="' + esc(o.orderNo) + '" data-to="paid_simulated">标记已付款</button>';
+if (o.status === "paid_simulated" || o.status === "paid" || o.status === "preparing" || o.status === "pending_payment") btns += '<button class="mini-btn danger" data-act="order-status" data-no="' + esc(o.orderNo) + '" data-to="cancelled">取消订单</button>';
+}
+return '<div class="order-card"><div class="oc-head"><span class="oc-no">' + esc(o.orderNo) + '</span><span class="status-pill ' + statusPillClass(o.status) + '">' + statusLabel(o.status) + '</span></div>'
++ '<div class="oc-line">' + (items || "（无明细）") + '</div>'
++ '<div class="oc-line">' + esc(o.buyerName || "") + ' · ' + esc(o.buyerPhone || "") + (admin? ' · ' + esc(o.buyerAddress || ""): "") + (o.createdAt? ' · ' + String(o.createdAt).slice(0, 10): "") + '</div>'
++ '<div class="oc-total"><span>合计（商品小计 ' + moneyC(o.subtotalCents || 0) + ' + 服务费 ' + moneyC(o.serviceFeeCents || 0) + '）</span><span>' + moneyC(o.totalCents || 0) + '</span></div>'
++ (btns? '<div class="oc-actions">' + btns + '</div>': '')
++ '</div>';
+}
+function openMyOrders() {
+$("#qName").value = $("#fName").value.trim();
+$("#qPhone").value = $("#fPhone").value.trim();
+$("#myOrdersList").innerHTML = "";
+$("#myOrdersLocal").innerHTML = lastOrder
+? '<button class="ghost-link-btn" id="viewLocalOrderBtn" type="button">查看最近一次生成的订单文字 ›</button>'
+: "";
+var b = $("#viewLocalOrderBtn");
+if (b) b.addEventListener("click", function () {
 $("#orderText").textContent = lastOrder;
 $("#orderHint").textContent = "这是你最近一次生成的订单。";
 $("#fillInfoBtn").hidden = true;
-openSheet("orderSheet");
+showSheetOnly("orderSheet");
+});
+openSheet("myOrdersSheet");
+}
+$("#menuOrder").addEventListener("click", openMyOrders);
+$("#queryOrdersBtn").addEventListener("click", async function () {
+var name = $("#qName").value.trim(), phone = $("#qPhone").value.trim();
+if (!name ||!phone) { toast("请填写姓名和手机号"); return;}
+if (!Backend.ready) {
+$("#myOrdersList").innerHTML = '<p class="hint">后端暂时连不上，查不到已保存的订单。</p>';
+return;
+}
+var btn = $("#queryOrdersBtn");
+btn.disabled = true; btn.textContent = "查询中…";
+try {
+var r = await callFn("getOrders", { selfLookup: true, buyerName: name, buyerPhone: phone, page: 1, pageSize: 20});
+if (r && r.code === 0) {
+var list = (r.data && r.data.list) || [];
+$("#myOrdersList").innerHTML = list.length
+? list.map(function (o) { return orderCardHTML(o, false);}).join("")
+: '<p class="hint">没有查到订单，请确认姓名和手机号和下单时填的一致。</p>';
+} else {
+$("#myOrdersList").innerHTML = '<p class="hint">查询失败：' + esc((r && r.message) || "请稍后重试") + '</p>';
+}
+} catch (e) {
+$("#myOrdersList").innerHTML = '<p class="hint">网络异常，查询失败，请稍后重试。</p>';
+}
+btn.disabled = false; btn.textContent = "查询我的订单";
+});
+
+/* ================= 后台管理 ================= */
+// 口令只保存在当前页面内存变量里，关闭页面即失效；绝不写进代码、绝不写进本地存储。
+var adminToken = "";
+var adminTab = "orders";
+var adminOrdersFilter = { status: "", keyword: ""};
+var adminProductsCache = [];
+var editingProductId = null;
+
+$("#menuAdmin").addEventListener("click", function () { openSheet("adminSheet");});
+$("#adminLoginBtn").addEventListener("click", async function () {
+var t = $("#adminTokenInput").value.trim();
+if (!t) { toast("请先输入管理员口令"); return;}
+if (!Backend.ready) { toast("后端暂时连不上，请稍后再试"); return;}
+var btn = $("#adminLoginBtn");
+btn.disabled = true; btn.textContent = "验证中…";
+try {
+var r = await callFn("adminCategories", { adminToken: t, action: "list"});
+if (r && r.code === 0) {
+adminToken = t;
+$("#adminLogin").hidden = true;
+$("#adminMain").hidden = false;
+renderAdminTabs();
+await renderAdminTab();
+toast("已进入后台");
+} else if (r && r.code === "FORBIDDEN") {
+toast("口令不对，或口令还没在云函数里设置");
+} else {
+toast("验证失败：" + ((r && r.message) || "请稍后重试"));
+}
+} catch (e) { toast("网络异常，验证失败");}
+btn.disabled = false; btn.textContent = "进入后台";
+});
+$("#adminLogoutBtn").addEventListener("click", function () {
+adminToken = "";
+$("#adminTokenInput").value = "";
+$("#adminMain").hidden = true;
+$("#adminLogin").hidden = false;
+toast("已退出后台，口令已清除");
+});
+
+var ADMIN_TABS = [["orders", "订单"], ["products", "商品"], ["cats", "分类"], ["settings", "设置"]];
+function renderAdminTabs() {
+$("#adminTabs").innerHTML = ADMIN_TABS.map(function (t) {
+return '<button class="chip' + (t[0] === adminTab? " on": "") + '" data-atab="' + t[0] + '">' + t[1] + "</button>";
+}).join("");
+}
+$("#adminTabs").addEventListener("click", function (e) {
+var b = e.target.closest("[data-atab]"); if (!b) return;
+adminTab = b.dataset.atab;
+renderAdminTabs();
+renderAdminTab();
+});
+function renderAdminTab() {
+if (adminTab === "orders") return renderAdminOrders();
+if (adminTab === "products") return renderAdminProducts();
+if (adminTab === "cats") return renderAdminCats();
+return renderAdminSettings();
+}
+function adminCallFail(r) {
+return '<p class="hint">' + ((r && r.code === "FORBIDDEN")? "口令失效，请重新进入后台。": "加载失败：" + esc((r && r.message) || "请稍后重试")) + '</p>';
+}
+async function renderAdminOrders() {
+var body = $("#adminBody");
+body.innerHTML = '<p class="hint">正在加载订单…</p>';
+try {
+var data = { adminToken: adminToken, page: 1, pageSize: 20};
+if (adminOrdersFilter.status) data.status = adminOrdersFilter.status;
+if (adminOrdersFilter.keyword) data.keyword = adminOrdersFilter.keyword;
+var r = await callFn("getOrders", data);
+if (!r || r.code!== 0) { body.innerHTML = adminCallFail(r); return;}
+var list = (r.data && r.data.list) || [];
+var html = '<div class="admin-add">'
++ '<select id="aoStatus"><option value="">全部状态</option>'
++ '<option value="paid_simulated">已付款</option><option value="preparing">备货中</option>'
++ '<option value="completed">已完成</option><option value="cancelled">已取消</option>'
++ '<option value="pending_payment">待付款</option></select>'
++ '<input id="aoKeyword" type="text" placeholder="订单号或手机号" value="' + esc(adminOrdersFilter.keyword) + '" />'
++ '<button class="mini-btn" id="aoSearchBtn">筛选</button></div>'
++ '<p class="hint">共 ' + (r.data? r.data.total: 0) + ' 单（只显示最近 20 单）</p>'
++ (list.length? list.map(function (o) { return orderCardHTML(o, true);}).join(""): '<p class="hint">没有符合条件的订单</p>');
+body.innerHTML = html;
+$("#aoStatus").value = adminOrdersFilter.status;
+$("#aoSearchBtn").addEventListener("click", function () {
+adminOrdersFilter.status = $("#aoStatus").value;
+adminOrdersFilter.keyword = $("#aoKeyword").value.trim();
+renderAdminOrders();
+});
+} catch (e) { body.innerHTML = '<p class="hint">网络异常，加载失败。</p>';}
+}
+async function renderAdminProducts() {
+var body = $("#adminBody");
+body.innerHTML = '<p class="hint">正在加载商品…</p>';
+try {
+var r = await callFn("adminProducts", { adminToken: adminToken, action: "list", page: 1, pageSize: 100, status: "all"});
+if (!r || r.code!== 0) { body.innerHTML = adminCallFail(r); return;}
+adminProductsCache = (r.data && r.data.list) || [];
+var html = '<div class="admin-add"><button class="mini-btn" id="apNewBtn">＋ 新增商品</button><span class="hint">共 ' + adminProductsCache.length + ' 款（含下架）</span></div>'
++ adminProductsCache.map(function (p) {
+return '<div class="admin-row"><div class="ar-info"><div>' + esc(p.name) + ' <span class="status-pill ' + (p.status === "on_sale"? "paid": "cancelled") + '">' + (p.status === "on_sale"? "上架中": "已下架") + '</span></div>'
++ '<div class="ar-sub">' + esc(p.spec || "") + ' · ' + esc(p.categoryL2 || "") + ' · ¥' + Number(p.priceYuan).toFixed(2) + '</div></div>'
++ '<div class="ar-actions"><button class="mini-btn" data-act="prod-toggle" data-id="' + esc(p._id) + '" data-status="' + (p.status === "on_sale"? "off_sale": "on_sale") + '">' + (p.status === "on_sale"? "下架": "上架") + '</button>'
++ '<button class="mini-btn" data-act="prod-edit" data-id="' + esc(p._id) + '">编辑</button></div></div>';
+}).join("");
+body.innerHTML = html;
+$("#apNewBtn").addEventListener("click", function () { openAdminProdForm(null);});
+} catch (e) { body.innerHTML = '<p class="hint">网络异常，加载失败。</p>';}
+}
+function parentName(list, pid) {
+for (var i = 0; i < list.length; i++) if (list[i]._id === pid) return list[i].name;
+return "";
+}
+async function renderAdminCats() {
+var body = $("#adminBody");
+body.innerHTML = '<p class="hint">正在加载分类…</p>';
+try {
+var r = await callFn("adminCategories", { adminToken: adminToken, action: "list"});
+if (!r || r.code!== 0) { body.innerHTML = adminCallFail(r); return;}
+var list = (r.data && r.data.list) || [];
+var l1 = list.filter(function (c) { return c.level === 1;});
+var html = list.map(function (c) {
+return '<div class="admin-row"><div class="ar-info"><div>' + esc(c.name) + ' <span class="status-pill">' + (c.level === 1? "一级": "二级") + '</span></div>'
++ '<div class="ar-sub">' + (c.level === 2? "上级：" + esc(parentName(list, c.parentId)): "二级分类 " + list.filter(function (x) { return x.parentId === c._id;}).length + " 个") + '</div></div>'
++ '<div class="ar-actions"><button class="mini-btn" data-act="cat-rename" data-id="' + esc(c._id) + '" data-name="' + esc(c.name) + '">改名</button>'
++ '<button class="mini-btn danger" data-act="cat-del" data-id="' + esc(c._id) + '">删除</button></div></div>';
+}).join("");
+html += '<div class="admin-add"><input id="catNewName" type="text" placeholder="新分类名" />'
++ '<select id="catNewLevel"><option value="1">一级分类</option><option value="2">二级分类</option></select>'
++ '<select id="catNewParent">' + l1.map(function (c) { return '<option value="' + esc(c._id) + '">' + esc(c.name) + '</option>';}).join("") + '</select>'
++ '<button class="mini-btn" id="catAddBtn">新增分类</button></div>'
++ '<p class="hint">二级分类必须挂在一个一级分类下；分类下有商品或子分类时不能删除。</p>';
+body.innerHTML = html;
+$("#catAddBtn").addEventListener("click", async function () {
+var name = $("#catNewName").value.trim();
+if (!name) { toast("请填写分类名"); return;}
+var level = Number($("#catNewLevel").value);
+var payload = { adminToken: adminToken, action: "create", level: level, name: name};
+if (level === 2) payload.parentId = $("#catNewParent").value;
+var r2 = await callFn("adminCategories", payload).catch(function () { return { code: "NETWORK_ERROR", message: "网络异常"};});
+if (r2 && r2.code === 0) { toast("分类已新增"); renderAdminCats(); loadCatalog();}
+else toast("新增失败：" + ((r2 && r2.message) || "请重试"));
+});
+} catch (e) { body.innerHTML = '<p class="hint">网络异常，加载失败。</p>';}
+}
+async function renderAdminSettings() {
+var body = $("#adminBody");
+body.innerHTML = '<p class="hint">正在加载设置…</p>';
+try {
+var r = await callFn("getSettings", {});
+if (!r || r.code!== 0) { body.innerHTML = adminCallFail(r); return;}
+var d = r.data, shop = d.shop || {}, fee = d.serviceFee || DEFAULT_FEE, pay = d.payment || {};
+body.innerHTML =
+'<div class="field"><label>店铺名</label><input id="asShopName" type="text" value="' + esc(shop.name || "") + '" /></div>'
++ '<div class="field"><label>店铺公告</label><input id="asNotice" type="text" value="' + esc(shop.notice || "") + '" /></div>'
++ '<div class="field"><label>配送说明</label><input id="asDelivery" type="text" value="' + esc(shop.deliveryNote || "") + '" /></div>'
++ '<div class="field"><label>服务费比例（%）</label><input id="asRate" type="number" step="0.1" min="0" max="100" value="' + ((Number(fee.rate) || 0) * 100) + '" /></div>'
++ '<div class="field"><label>服务费下限（元）</label><input id="asMin" type="number" step="1" min="0" value="' + ((Number(fee.minCents) || 0) / 100) + '" /></div>'
++ '<div class="field"><label>服务费上限（元）</label><input id="asMax" type="number" step="1" min="0" value="' + ((Number(fee.maxCents) || 0) / 100) + '" /></div>'
++ '<div class="field"><label>默认支付方式</label><select id="asPay" class="full"><option value="wechat">微信支付</option><option value="alipay">支付宝</option></select></div>'
++ '<button class="primary-btn" id="asSaveBtn" style="margin-top:12px">保存设置</button>'
++ '<p class="hint">服务费规则：按订单金额的百分比收，不足下限按下限，超过上限按上限。保存后顾客下次打开结算页即生效。</p>';
+$("#asPay").value = pay.defaultMethod || "wechat";
+$("#asSaveBtn").addEventListener("click", async function () {
+var rate = Number($("#asRate").value), minY = Number($("#asMin").value), maxY = Number($("#asMax").value);
+if (!(rate >= 0 && rate <= 100) ||!(minY >= 0) ||!(maxY >= 0) || minY > maxY) { toast("请检查服务费数值（比例 0–100，下限不超过上限）"); return;}
+var r2 = await callFn("updateSettings", {
+adminToken: adminToken,
+shop: { name: $("#asShopName").value.trim(), notice: $("#asNotice").value.trim(), deliveryNote: $("#asDelivery").value.trim()},
+serviceFee: { rate: rate / 100, minCents: Math.round(minY * 100), maxCents: Math.round(maxY * 100)},
+payment: { defaultMethod: $("#asPay").value}
+}).catch(function () { return { code: "NETWORK_ERROR", message: "网络异常"};});
+if (r2 && r2.code === 0) toast("设置已保存");
+else toast("保存失败：" + ((r2 && r2.message) || "请重试"));
+});
+} catch (e) { body.innerHTML = '<p class="hint">网络异常，加载失败。</p>';}
+}
+// 后台列表里的操作按钮（改状态 / 上下架 / 编辑 / 改名 / 删除）统一走这里。
+$("#adminBody").addEventListener("click", async function (e) {
+var b = e.target.closest("[data-act]"); if (!b || b.disabled) return;
+var act = b.dataset.act;
+if (act === "order-status") {
+b.disabled = true;
+var r = await callFn("updateOrderStatus", { adminToken: adminToken, orderNo: b.dataset.no, status: b.dataset.to}).catch(function () { return { code: "NETWORK_ERROR", message: "网络异常"};});
+if (r && r.code === 0) { toast("状态已更新"); renderAdminOrders();}
+else toast("更新失败：" + ((r && r.message) || "请重试"));
+return;
+}
+if (act === "prod-toggle") {
+b.disabled = true;
+var r2 = await callFn("adminProducts", { adminToken: adminToken, action: "update", productId: b.dataset.id, status: b.dataset.status}).catch(function () { return { code: "NETWORK_ERROR", message: "网络异常"};});
+if (r2 && r2.code === 0) { toast(b.dataset.status === "on_sale"? "已上架": "已下架"); renderAdminProducts(); loadCatalog();}
+else toast("操作失败：" + ((r2 && r2.message) || "请重试"));
+return;
+}
+if (act === "prod-edit") { openAdminProdForm(b.dataset.id); return;}
+if (act === "cat-del") {
+if (!confirm("确定删除这个分类吗？分类下有商品或子分类时会被拒绝。")) return;
+var r3 = await callFn("adminCategories", { adminToken: adminToken, action: "delete", categoryId: b.dataset.id}).catch(function () { return { code: "NETWORK_ERROR", message: "网络异常"};});
+if (r3 && r3.code === 0) { toast("已删除"); renderAdminCats(); loadCatalog();}
+else toast("删除失败：" + ((r3 && r3.message) || "请重试"));
+return;
+}
+if (act === "cat-rename") {
+var nv = prompt("新分类名", b.dataset.name);
+if (nv === null) return;
+nv = nv.trim();
+if (!nv) return;
+var r4 = await callFn("adminCategories", { adminToken: adminToken, action: "update", categoryId: b.dataset.id, name: nv}).catch(function () { return { code: "NETWORK_ERROR", message: "网络异常"};});
+if (r4 && r4.code === 0) { toast("已改名"); renderAdminCats(); loadCatalog();}
+else toast("改名失败：" + ((r4 && r4.message) || "请重试"));
+return;
+}
+});
+function openAdminProdForm(id) {
+editingProductId = id || null;
+var p = null;
+if (id) { for (var i = 0; i < adminProductsCache.length; i++) if (adminProductsCache[i]._id === id) p = adminProductsCache[i];}
+$("#adminProdTitle").textContent = p? "编辑商品": "新增商品";
+$("#apName").value = p? p.name: "";
+$("#apSpec").value = p? (p.spec || ""): "";
+$("#apPrice").value = p? Number(p.priceYuan): "";
+$("#apCatL1").value = p? (p.categoryL1 || "休闲零食"): "休闲零食";
+var l2names = [];
+CAT_TREE.forEach(function (l1) { (l1.children || []).forEach(function (c) { l2names.push(c.name);});});
+if (p && p.categoryL2 && l2names.indexOf(p.categoryL2) === -1) l2names.push(p.categoryL2);
+$("#apCatL2").innerHTML = l2names.map(function (n) { return '<option value="' + esc(n) + '">' + esc(n) + '</option>';}).join("");
+if (p) $("#apCatL2").value = p.categoryL2 || "";
+$("#apImg").value = p? (p.imageUrl || ""): "";
+$("#apPoints").value = p? (p.sellingPoints || ""): "";
+$("#apStatus").value = p? p.status: "on_sale";
+$("#adminProdDeleteBtn").hidden =!p;
+showSheetOnly("adminProdSheet");
+}
+$("#adminProdSaveBtn").addEventListener("click", async function () {
+var name = $("#apName").value.trim(), spec = $("#apSpec").value.trim();
+var price = Number($("#apPrice").value);
+var catL1 = $("#apCatL1").value.trim(), catL2 = $("#apCatL2").value;
+if (!name ||!spec ||!(price > 0) ||!catL1 ||!catL2) { toast("请填好商品名、规格、价格和分类"); return;}
+var payload = {
+adminToken: adminToken, action: editingProductId? "update": "create",
+name: name, spec: spec, priceYuan: price, categoryL1: catL1, categoryL2: catL2,
+imageUrl: $("#apImg").value.trim() || null, sellingPoints: $("#apPoints").value.trim() || null,
+status: $("#apStatus").value
+};
+if (editingProductId) payload.productId = editingProductId;
+var btn = $("#adminProdSaveBtn");
+btn.disabled = true; btn.textContent = "保存中…";
+try {
+var r = await callFn("adminProducts", payload);
+if (r && r.code === 0) {
+toast("已保存");
+showSheetOnly("adminSheet");
+renderAdminTab();
+loadCatalog();
+} else toast("保存失败：" + ((r && r.message) || "请重试"));
+} catch (e) { toast("网络异常，保存失败");}
+btn.disabled = false; btn.textContent = "保存";
+});
+$("#adminProdDeleteBtn").addEventListener("click", async function () {
+if (!editingProductId) return;
+if (!confirm("确定删除这个商品吗？已下过的订单不受影响。")) return;
+try {
+var r = await callFn("adminProducts", { adminToken: adminToken, action: "delete", productId: editingProductId});
+if (r && r.code === 0) {
+toast("已删除");
+showSheetOnly("adminSheet");
+renderAdminTab();
+loadCatalog();
+} else toast("删除失败：" + ((r && r.message) || "请重试"));
+} catch (e) { toast("网络异常，删除失败");}
 });
 
 /* Profile form reflects into the profile card */
@@ -1141,7 +1810,9 @@ openSheet("orderSheet");
 $("#" + id).addEventListener("input", renderMe);
 });
 
+/* ================= 启动 ================= */
 renderAll();
+initBackend().then(function () { return loadCatalog();});
 </script>
 </body>
 </html>
