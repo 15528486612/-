@@ -763,13 +763,15 @@ max-width: calc(100vw - 48px); overflow: hidden; text-overflow: ellipsis;
 /* ================= CloudBase 后端配置 ================= */
 // 环境 ID 不是密钥，前端可见；不要在这里放任何口令、数据库密码或商户密钥。
 var ENV_ID = 'shequn-dingdan-d7gz49yom485e1fbb';
+// Publishable Key（公开密钥）：2026-11-09 在控制台「环境管理 → API Key 配置」生成。
+// 它是公开的匿名访问凭证，可以放在网页代码里；真正的保护靠云函数安全规则和管理口令。
+// 有它之后，调云函数不再依赖匿名登录那一步（浏览器里匿名登录失败，是之前连不上的原因）。
+var ACCESS_KEY = 'eyJhbGciOiJSUzI1NiIsImtpZCI6ImE2ZWE1ZTE4LWE1OTUtNDU2Ny1iNDMwLTVkOWIyMTExYWYwZiJ9.eyJpc3MiOiJodHRwczovL3NoZXF1bi1kaW5nZGFuLWQ3Z3o0OXlvbTQ4NWUxZmJiLmFwLXNoYW5naGFpLnRjYi1hcGkudGVuY2VudGNsb3VkYXBpLmNvbSIsInN1YiI6ImFub24iLCJhdWQiOiJzaGVxdW4tZGluZ2Rhbi1kN2d6NDl5b200ODVlMWZiYiIsImV4cCI6NDA5NzkxMDAzMSwiaWF0IjoxNzk0MjI2ODMxLCJub25jZSI6InIwX1BvOExZUnB5bnF0TTRpdGdxTkEiLCJhdF9oYXNoIjoicjBfUG84TFlScHlucXRNNGl0Z3FOQSIsIm5hbWUiOiJBbm9ueW1vdXMiLCJzY29wZSI6ImFub255bW91cyIsInByb2plY3RfaWQiOiJzaGVxdW4tZGluZ2Rhbi1kN2d6NDl5b200ODVlMWZiYiIsIm1ldGEiOnsicGxhdGZvcm0iOiJQdWJsaXNoYWJsZUtleSJ9LCJyb2xlIjoiYW5vbiIsImlzX2Fub255bW91cyI6dHJ1ZSwiYXBwX21ldGFkYXRhIjp7InByb3ZpZGVyIjoiYW5vbnltb3VzIiwicHJvdmlkZXJzIjpbImFub255bW91cyJdfSwidXNlcl9tZXRhZGF0YSI6eyJuYW1lIjoiQW5vbnltb3VzIn0sInVzZXJfdHlwZSI6IiIsImNsaWVudF90eXBlIjoiY2xpZW50X3VzZXIiLCJpc19zeXN0ZW1fYWRtaW4iOmZhbHNlfQ.Hd_wAAwf89aJUZPlTYaRzW39f8I23CoATay99pJ9jYCmmU6Vs_8YMIa8tlpaFp-AUOU3y9avf1IpMOQpbfu9b8ZfH6TCG_qyn5S5LQAvlK3v3YyYpoHbd3yL5goDh21KJSrL7I929y9U21zQGSerS_DtPJM0pIAgPjAkXAFnPQXya4Z3UVyuCnqwwq5MfnboSZyze9I9MyYqW1K26LAtRYRZy3wtbsWj6N_7z4aibhAil97JcUmeh7bYAPqdn175L5OKtfzmgxpaj5KMdehRpEHVzYQiwSAJ-KcqAa8J6drDhWLruP1ktSgBzEZWUHHiZ5ES1zTzlaGhmO8wfcNrbg';
 // 前端 SDK 通过 <head> 里的 cloudbase.full.js（CloudBase 官方 CDN，latest）加载，
 // 对应后端云函数用的 @cloudbase/js-sdk 3.11.0。
-// 认证方式：匿名登录（app.auth.signInAnonymously）。它要求在 CloudBase 控制台里开启
-// 「身份认证 → 登录方式 → 匿名登录」；如果没开，登录会失败，页面会提示开启路径。
-// init 的 accessKey（Publishable Key）是可选的，本页没传——匿名登录已够用；
-// 只有当匿名登录被关掉、又不想开它时，才需要去控制台「API Key 配置」生成 Publishable Key
-// 并在 init 里加上 accessKey。
+// 认证方式：Publishable Key（init 时传 accessKey）+ 匿名登录（尽力而为）。
+// 之前只靠匿名登录，但它在浏览器里会失败，导致整个页面连不上后端；
+// 现在有了 accessKey，匿名登录即使失败也不拦路，调云函数照样能用。
 
 /* ================= Fallback catalog: 后端连不上时才用的商品快照 ================= */
 // 2026-11-09 从数据库种子数据抄的 30 款（山姆价）。后端正常时不用它，页面显示的是实时拉取的数据。
@@ -838,7 +840,8 @@ function hideBackendBanner() {
 document.getElementById('backendBanner').hidden = true;
 }
 document.getElementById('backendBanner').addEventListener('click', function () {
-if (!Backend.ready) { toast('正在重试连接…'); loadCatalog(); }
+toast('正在重试连接…');
+initBackend().then(function () { loadCatalog(); });
 });
 async function initBackend() {
 if (!window.cloudbase) {
@@ -847,26 +850,30 @@ return false;
 }
 var app;
 try {
-app = window.cloudbase.init({ env: ENV_ID });
+app = window.cloudbase.init({ env: ENV_ID, accessKey: ACCESS_KEY });
 } catch (e) {
 showBackendBanner('初始化失败：' + esc(e && e.message ? e.message : '未知错误'));
 return false;
 }
 window.__cbApp = app;
+// 匿名登录尽力而为（10 秒超时）：成了最好，不成也不拦路——
+// 有 Publishable Key 在，调云函数不需要登录态。
 try {
 var auth = getAuth(app);
-if (!auth) throw new Error('当前 SDK 版本不支持匿名登录');
-var res = await auth.signInAnonymously();
+if (auth) {
+var res = await Promise.race([
+auth.signInAnonymously(),
+new Promise(function (_, reject) { setTimeout(function () { reject(new Error('匿名登录超时（10秒）')); }, 10000); })
+]);
 if (res && res.error) throw new Error((res.error && (res.error.message || res.error.code)) || '匿名登录失败');
-Backend.ready = true;
 Backend.authed = true;
-return true;
-} catch (e) {
-Backend.ready = false;
-Backend.error = (e && e.message) ? e.message : '登录失败';
-showBackendBanner('后端连接失败：匿名登录未成功（' + esc(Backend.error) + '）。请在 CloudBase 控制台开启匿名登录：身份认证 → 登录方式 → 匿名登录，然后刷新页面重试。');
-return false;
 }
+} catch (e) {
+Backend.authed = false;
+Backend.error = (e && e.message) ? e.message : '登录失败';
+}
+Backend.ready = true;
+return true;
 }
 // 调云函数：返回云函数自己的 { code, message, data }；网关/网络错误时抛错，调用方 catch。
 // v3 的 callFunction 成功时把云函数返回值放在 res.result 里，失败默认抛错。
@@ -931,7 +938,7 @@ PRODUCTS = FALLBACK_PRODUCTS.slice();
 CATS = FALLBACK_CATS.slice();
 CAT_TREE = [];
 catalogLoading = false;
-showBackendBanner('后端暂时连不上（' + esc(reason) + '）。当前显示的是商品快照，下单只会生成订单文字，不会保存到后台。点我重试。');
+showBackendBanner('后端暂时连不上（' + esc(reason) + (Backend.error ? '；' + esc(Backend.error) : '') + '）。当前显示的是商品快照，下单只会生成订单文字，不会保存到后台。点我重试。');
 renderAll();
 }
 
