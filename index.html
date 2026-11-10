@@ -583,7 +583,7 @@ max-width: calc(100vw - 48px); overflow: hidden; text-overflow: ellipsis;
 </div>
 </div>
 <div class="order-status" id="orderStatusSec">
-<div class="os-head"><h3>订单状态</h3><span class="os-sub">输入下单时的姓名和手机号查询</span></div>
+<div class="os-head"><h3>订单状态</h3><span class="os-sub">收货信息已保存时自动显示你的订单</span></div>
 <div class="os-query">
 <input id="meQName" type="text" placeholder="姓名" autocomplete="name" />
 <input id="meQPhone" type="tel" placeholder="手机号" autocomplete="tel" />
@@ -1235,6 +1235,7 @@ document.querySelectorAll(".tab").forEach(function (t) {
 t.classList.toggle("on", t.dataset.view === name);
 });
 window.scrollTo(0, 0);
+if (name === "me") autoLoadMyOrders();
 }
 document.querySelectorAll(".tab").forEach(function (t) {
 t.addEventListener("click", function () { switchView(t.dataset.view); });
@@ -1655,7 +1656,15 @@ $("#meOrdersList").innerHTML = list.length
 : (lastMyOrders.length ? '<p class="hint">这个状态下没有订单</p>' : "");
 renderMeLocal();
 }
+/* 点开“我的”就自动显示自己的订单：收货信息已保存就用它查，不用再手动输一次 */
+var meQuerying = false;
+function autoLoadMyOrders() {
+if (!$("#meQName").value.trim()) $("#meQName").value = $("#fName").value.trim();
+if (!$("#meQPhone").value.trim()) $("#meQPhone").value = $("#fPhone").value.trim();
+if ($("#meQName").value.trim() && $("#meQPhone").value.trim()) queryMeOrders();
+}
 async function queryMeOrders() {
+if (meQuerying) return;
 var name = $("#meQName").value.trim(), phone = $("#meQPhone").value.trim();
 if (!name || !phone) { toast("请填写姓名和手机号"); return; }
 if (!Backend.ready) {
@@ -1663,6 +1672,7 @@ $("#meOrdersList").innerHTML = '<p class="hint">后端暂时连不上，查不�
 return;
 }
 var btn = $("#meQueryBtn");
+meQuerying = true;
 btn.disabled = true; btn.textContent = "查询中…";
 try {
 var r = await callFn("getOrders", { selfLookup: true, buyerName: name, buyerPhone: phone, page: 1, pageSize: 20 });
@@ -1678,6 +1688,7 @@ $("#meOrdersList").innerHTML = '<p class="hint">查询失败：' + esc((r && r.m
 $("#meOrdersList").innerHTML = '<p class="hint">网络异常，查询失败，请稍后重试。</p>';
 }
 btn.disabled = false; btn.textContent = "查询";
+meQuerying = false;
 }
 $("#meQueryBtn").addEventListener("click", queryMeOrders);
 $("#meStatusChips").addEventListener("click", function (e) {
@@ -1686,11 +1697,7 @@ meStatusFilter = b.dataset.mstatus; renderMeOrders();
 });
 $("#menuOrder").addEventListener("click", function () {
 switchView("me");
-$("#meQName").value = $("#fName").value.trim();
-$("#meQPhone").value = $("#fPhone").value.trim();
-renderMeLocal();
 $("#orderStatusSec").scrollIntoView({ behavior: "smooth", block: "start" });
-if ($("#meQName").value && $("#meQPhone").value) queryMeOrders();
 });
 
 /* ================= 后台管理 ================= */
