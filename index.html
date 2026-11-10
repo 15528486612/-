@@ -964,6 +964,7 @@ CATS = ['全部'].concat(l2);
 PRODUCTS = ((prodsRes.data && prodsRes.data.list) || []).map(mapServerProduct);
 catalogLoading = false;
 hideBackendBanner();
+pruneCart();
 } catch (e) {
 useFallback('加载失败：' + (e && e.message ? e.message : '网络异常'));
 return;
@@ -975,6 +976,7 @@ PRODUCTS = FALLBACK_PRODUCTS.slice();
 CATS = FALLBACK_CATS.slice();
 CAT_TREE = [];
 catalogLoading = false;
+pruneCart();
 showBackendBanner('后端暂时连不上（' + esc(reason) + (Backend.error ? '；' + esc(Backend.error) : '') + '）。当前显示的是商品快照，下单只会生成订单文字，不会保存到后台。点我重试。');
 renderAll();
 }
@@ -986,7 +988,29 @@ return '<div class="ph" aria-hidden="true"><svg width="26" height="26" viewBox="
 }
 
 /* ================= State (in-memory only) ================= */
-var cart = {}; // id -> qty
+/* 购物车保存在本机浏览器里，下次打开自动恢复；只存在这台手机上，不会上传到后台 */
+var CART_KEY = "sq_cart_v1";
+function loadCart() {
+try {
+var raw = localStorage.getItem(CART_KEY);
+if (!raw) return {};
+var obj = JSON.parse(raw);
+if (!obj || typeof obj !== "object") return {};
+var out = {};
+Object.keys(obj).forEach(function (id) {
+var q = parseInt(obj[id], 10);
+if (q > 0) out[id] = Math.min(q, 99);
+});
+return out;
+} catch (e) { return {}; }
+}
+function saveCart() {
+try { localStorage.setItem(CART_KEY, JSON.stringify(cart)); } catch (e) { /* 忽略 */ }
+}
+function pruneCart() { /* 删掉商品库里已不存在的条目（如下架的商品），只改内存，不动本机保存的版本 */
+Object.keys(cart).forEach(function (id) { if (!byId(id)) delete cart[id]; });
+}
+var cart = loadCart(); // id -> qty
 var filterCat = "全部";
 var keyword = "";
 var detailId = null;
@@ -1010,8 +1034,8 @@ var $ = function (s) { return document.querySelector(s); };
 function money(n) { return "¥" + n.toFixed(2); }
 function moneyC(c) { return "¥" + (c / 100).toFixed(2); }
 function byId(id) { for (var i = 0; i < PRODUCTS.length; i++) if (PRODUCTS[i].id === id) return PRODUCTS[i]; return null; }
-function cartCount() { var n = 0; for (var k in cart) n += cart[k]; return n; }
-function cartKinds() { var n = 0; for (var k in cart) if (cart[k] > 0) n++; return n; }
+function cartCount() { var n = 0; for (var k in cart) if (byId(k)) n += cart[k]; return n; }
+function cartKinds() { var n = 0; for (var k in cart) if (cart[k] > 0 && byId(k)) n++; return n; }
 function cartTotal() { var t = 0; for (var k in cart) { var p = byId(k); if (p) t += p.price * cart[k]; } return t; }
 function cartSubtotalCents() {
 var t = 0;
@@ -1048,6 +1072,7 @@ return '<span class="stepper lg">'
 
 function setQty(id, qty, silent) {
 if (qty <= 0) delete cart[id]; else cart[id] = Math.min(qty, 99);
+saveCart();
 renderAll();
 if (!silent && qty > 0) bumpBadge();
 }
@@ -1162,7 +1187,7 @@ return '<div class="row-item" data-open="' + p.id + '">'
 
 /* ================= Render: cart ================= */
 function renderCart() {
-var ids = Object.keys(cart).filter(function (k) { return cart[k] > 0; });
+var ids = Object.keys(cart).filter(function (k) { return cart[k] > 0 && byId(k); });
 $("#cartEmpty").hidden = ids.length > 0;
 $("#cartSummary").hidden = ids.length === 0;
 $("#clearCartBtn").hidden = ids.length === 0;
@@ -1274,7 +1299,7 @@ if (open) openDetail(open.dataset.open);
 });
 
 function clearCart(silent) {
-cart = {}; renderAll();
+cart = {}; saveCart(); renderAll();
 if (!silent) toast("购物车已清空");
 }
 $("#clearCartBtn").addEventListener("click", function () { clearCart(false); });
@@ -1499,7 +1524,7 @@ $("#doneAmount").textContent = moneyC(d.totalCents);
 $("#doneOrderNo").textContent = d.orderNo;
 $("#doneMethod").textContent = methodName(payMethod);
 $("#doneOrderText").textContent = lastOrder;
-cart = {};
+cart = {}; saveCart();
 renderAll();
 paying = false;
 resetSimPayBtn();
