@@ -608,6 +608,7 @@ max-width: calc(100vw - 48px); overflow: hidden; text-overflow: ellipsis;
 <textarea id="fAddr" rows="2" placeholder="如：XX小区 3号楼 2单元 501"></textarea>
 </div>
 </div>
+<button class="ghost-link-btn" id="clearBuyerInfoBtn" type="button">清除本机保存的收货信息</button>
 <div class="menu-card">
 <button class="menu-row" id="menuOrder"><span>我的订单</span><span class="chev">›</span></button>
 <button class="menu-row" id="menuAdmin"><span>后台管理</span><span class="chev">›</span></button>
@@ -1980,12 +1981,40 @@ loadCatalog();
 } catch (e) { toast("网络异常，删除失败");}
 });
 
+/* 收货信息保存在本机浏览器里，下次打开自动填好；只存在这台手机上，不会上传到后台 */
+var BUYER_INFO_KEY = "sq_buyer_info_v1";
+function loadBuyerInfo() {
+try {
+var raw = localStorage.getItem(BUYER_INFO_KEY);
+if (!raw) return;
+var info = JSON.parse(raw);
+if (info.name) $("#fName").value = info.name;
+if (info.phone) $("#fPhone").value = info.phone;
+if (info.address) $("#fAddr").value = info.address;
+} catch (e) { /* 本机存储不可用时忽略，下次重新填写即可 */ }
+}
+function saveBuyerInfo() {
+try {
+localStorage.setItem(BUYER_INFO_KEY, JSON.stringify({
+name: $("#fName").value.trim(),
+phone: $("#fPhone").value.trim(),
+address: $("#fAddr").value.trim()
+}));
+} catch (e) { /* 忽略 */ }
+}
 /* Profile form reflects into the profile card */
 ["fName", "fPhone", "fAddr"].forEach(function (id) {
-$("#" + id).addEventListener("input", renderMe);
+$("#" + id).addEventListener("input", function () { renderMe(); saveBuyerInfo(); });
+});
+$("#clearBuyerInfoBtn").addEventListener("click", function () {
+try { localStorage.removeItem(BUYER_INFO_KEY); } catch (e) {}
+$("#fName").value = ""; $("#fPhone").value = ""; $("#fAddr").value = "";
+renderMe();
+toast("已清除本机保存的收货信息");
 });
 
 /* ================= 启动 ================= */
+loadBuyerInfo();
 renderAll();
 initBackend().then(function () { return loadCatalog();});
 </script>
