@@ -949,14 +949,27 @@ renderGrid();
 if (!Backend.ready) { useFallback('后端未连接'); return; }
 try {
 var catsRes = await callFn('getCategories', {});
-var prodsRes = await callFn('getProducts', { page: 1, pageSize: 100 });
 if (!catsRes || catsRes.code !== 0) throw new Error((catsRes && catsRes.message) || '分类加载失败');
-if (!prodsRes || prodsRes.code !== 0) throw new Error((prodsRes && prodsRes.message) || '商品加载失败');
 CAT_TREE = (catsRes.data && catsRes.data.list) || [];
 var l2 = [];
 CAT_TREE.forEach(function (l1) { (l1.children || []).forEach(function (c) { l2.push(c.name); }); });
 CATS = ['全部'].concat(l2);
-PRODUCTS = ((prodsRes.data && prodsRes.data.list) || []).map(mapServerProduct);
+/* 商品接口每页最多 100 条，商品超过 100 件时要把后面的页也取回来，否则排在后面的分类在店里看不到 */
+var firstRes = await callFn('getProducts', { page: 1, pageSize: 100 });
+if (!firstRes || firstRes.code !== 0) throw new Error((firstRes && firstRes.message) || '商品加载失败');
+var totalProds = (firstRes.data && firstRes.data.total) || 0;
+var allProds = ((firstRes.data && firstRes.data.list) || []).slice();
+if (allProds.length < totalProds) {
+var extraPages = [];
+for (var pn = 2; pn <= Math.ceil(totalProds / 100); pn++) extraPages.push(pn);
+var restRes = await Promise.all(extraPages.map(function (p) { return callFn('getProducts', { page: p, pageSize: 100 }); }));
+for (var ri = 0; ri < restRes.length; ri++) {
+var rr = restRes[ri];
+if (!rr || rr.code !== 0) throw new Error((rr && rr.message) || '商品加载失败');
+allProds = allProds.concat((rr.data && rr.data.list) || []);
+}
+}
+PRODUCTS = allProds.map(mapServerProduct);
 catalogLoading = false;
 hideBackendBanner();
 pruneCart();
