@@ -954,15 +954,15 @@ CAT_TREE = (catsRes.data && catsRes.data.list) || [];
 var l2 = [];
 CAT_TREE.forEach(function (l1) { (l1.children || []).forEach(function (c) { l2.push(c.name); }); });
 CATS = ['全部'].concat(l2);
-/* 商品接口每页最多 100 条，商品超过 100 件时要把后面的页也取回来，否则排在后面的分类在店里看不到 */
-var firstRes = await callFn('getProducts', { page: 1, pageSize: 100 });
+/* 商品接口每页最多 100 条，但单次返回不能超过 6MB，商品带图后 100 件一页会超限；改成每页 30 件，逐页取完再拼起来 */
+var firstRes = await callFn('getProducts', { page: 1, pageSize: 30 });
 if (!firstRes || firstRes.code !== 0) throw new Error((firstRes && firstRes.message) || '商品加载失败');
 var totalProds = (firstRes.data && firstRes.data.total) || 0;
 var allProds = ((firstRes.data && firstRes.data.list) || []).slice();
 if (allProds.length < totalProds) {
 var extraPages = [];
-for (var pn = 2; pn <= Math.ceil(totalProds / 100); pn++) extraPages.push(pn);
-var restRes = await Promise.all(extraPages.map(function (p) { return callFn('getProducts', { page: p, pageSize: 100 }); }));
+for (var pn = 2; pn <= Math.ceil(totalProds / 30); pn++) extraPages.push(pn);
+var restRes = await Promise.all(extraPages.map(function (p) { return callFn('getProducts', { page: p, pageSize: 30 }); }));
 for (var ri = 0; ri < restRes.length; ri++) {
 var rr = restRes[ri];
 if (!rr || rr.code !== 0) throw new Error((rr && rr.message) || '商品加载失败');
@@ -1801,9 +1801,21 @@ async function renderAdminProducts() {
 var body = $("#adminBody");
 body.innerHTML = '<p class="hint">正在加载商品…</p>';
 try {
-var r = await callFn("adminProducts", { adminToken: adminToken, action: "list", page: 1, pageSize: 100, status: "all"});
+/* 单次返回不能超过 6MB，商品多了要分小页取（每页 30 件）再拼起来，否则后台商品列表打不开 */
+var r = await callFn("adminProducts", { adminToken: adminToken, action: "list", page: 1, pageSize: 30, status: "all"});
 if (!r || r.code!== 0) { body.innerHTML = adminCallFail(r); return;}
 adminProductsCache = (r.data && r.data.list) || [];
+var totalAdminProds = (r.data && r.data.total) || 0;
+if (adminProductsCache.length < totalAdminProds) {
+var adminExtraPages = [];
+for (var apn = 2; apn <= Math.ceil(totalAdminProds / 30); apn++) adminExtraPages.push(apn);
+var adminRestRes = await Promise.all(adminExtraPages.map(function (p) { return callFn("adminProducts", { adminToken: adminToken, action: "list", page: p, pageSize: 30, status: "all"}); }));
+for (var ari = 0; ari < adminRestRes.length; ari++) {
+var arr = adminRestRes[ari];
+if (!arr || arr.code!== 0) { body.innerHTML = adminCallFail(arr); return; }
+adminProductsCache = adminProductsCache.concat((arr.data && arr.data.list) || []);
+}
+}
 var html = '<div class="admin-add"><button class="mini-btn" id="apNewBtn">＋ 新增商品</button><span class="hint">共 ' + adminProductsCache.length + ' 款（含下架）</span></div>'
 + adminProductsCache.map(function (p) {
 return '<div class="admin-row"><div class="ar-info"><div>' + esc(p.name) + ' <span class="status-pill ' + (p.status === "on_sale"? "paid": "cancelled") + '">' + (p.status === "on_sale"? "上架中": "已下架") + '</span></div>'
